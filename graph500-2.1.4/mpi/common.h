@@ -39,12 +39,15 @@ extern MPI_Datatype packed_edge_mpi_type; /* MPI datatype for packed_edge struct
 #define VERTEX_TO_GLOBAL(r, i) ((int64_t)(MUL_SIZE((uint64_t)i) + (int)(r)))
 
 typedef struct tuple_graph {
-  int data_in_file; /* 1 for file, 0 for memory */
-  packed_edge* restrict edgememory; /* NULL if edges are in file */
-  int64_t edgememory_size;
-  int64_t max_edgememory_size;
-  MPI_File edgefile; /* Or MPI_FILE_NULL if edges are in memory */
-  int64_t nglobaledges; /* Number of edges in graph, in both cases */
+    int data_in_file;
+    /* 1 for file, 0 for memory */
+    packed_edge *restrict edgememory;
+    /* NULL if edges are in file */
+    int64_t edgememory_size;
+    int64_t max_edgememory_size;
+    MPI_File edgefile;
+    /* Or MPI_FILE_NULL if edges are in memory */
+    int64_t nglobaledges; /* Number of edges in graph, in both cases */
 } tuple_graph;
 
 #define FILE_CHUNKSIZE ((MPI_Offset)(1) << 23) /* Size of one file I/O block or memory block to be processed in one step, in edges */
@@ -126,44 +129,68 @@ typedef struct tuple_graph {
     if (edge_data_from_file) free(edge_data_from_file); \
   } while (0)
 
-static inline int64_t tuple_graph_max_bufsize(const tuple_graph* tg) {
-  return FILE_CHUNKSIZE;
+static inline int64_t tuple_graph_max_bufsize(const tuple_graph *tg) {
+    return FILE_CHUNKSIZE;
 }
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void setup_globals(void); /* In utils.c */
-void cleanup_globals(void); /* In utils.c */
-int lg_int64_t(int64_t x); /* In utils.c */
-void* xMPI_Alloc_mem(size_t nbytes); /* In utils.c */
-void* xmalloc(size_t nbytes); /* In utils.c */
-void* xcalloc(size_t n, size_t unit); /* In utils.c */
-void* xrealloc(void* p, size_t nbytes); /* In utils.c */
+void setup_globals(void);
 
-int validate_bfs_result(const tuple_graph* const tg, const int64_t nglobalverts, const size_t nlocalverts, const int64_t root, int64_t* const pred, int64_t* const edge_visit_count_ptr); /* In validate.c */
+/* In utils.c */
+void cleanup_globals(void);
+
+/* In utils.c */
+int lg_int64_t(int64_t x);
+
+/* In utils.c */
+void *xMPI_Alloc_mem(size_t nbytes);
+
+/* In utils.c */
+void *xmalloc(size_t nbytes);
+
+/* In utils.c */
+void *xcalloc(size_t n, size_t unit);
+
+/* In utils.c */
+void *xrealloc(void *p, size_t nbytes);
+
+/* In utils.c */
+
+int validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalverts, const size_t nlocalverts,
+                        const int64_t root, int64_t *const pred,
+                        int64_t *const edge_visit_count_ptr); /* In validate.c */
 
 /* Definitions in each BFS file, using static global variables for internal
  * storage: */
-void make_graph_data_structure(const tuple_graph* const tg);
+void make_graph_data_structure(const tuple_graph *const tg);
+
 void free_graph_data_structure(void);
-int bfs_writes_depth_map(void); /* True if high 16 bits of pred entries are zero-based level numbers, or UINT16_MAX for unreachable. */
-void run_bfs(int64_t root, int64_t* pred);
-void get_vertex_distribution_for_pred(size_t count, const int64_t* vertices, int* owners, size_t* locals);
-int64_t vertex_to_global_for_pred(int v_rank, size_t v_local); /* Only used for error messages */
+
+int bfs_writes_depth_map(void);
+
+/* True if high 16 bits of pred entries are zero-based level numbers, or UINT16_MAX for unreachable. */
+void run_bfs(int64_t root, int64_t *pred);
+
+void get_vertex_distribution_for_pred(size_t count, const int64_t *vertices, int *owners, size_t *locals);
+
+int64_t vertex_to_global_for_pred(int v_rank, size_t v_local);
+
+/* Only used for error messages */
 size_t get_nlocalverts_for_pred(void);
 
 static inline size_t size_min(size_t a, size_t b) {
-  return a < b ? a : b;
+    return a < b ? a : b;
 }
 
 static inline ptrdiff_t ptrdiff_min(ptrdiff_t a, ptrdiff_t b) {
-  return a < b ? a : b;
+    return a < b ? a : b;
 }
 
 static inline int64_t int64_min(int64_t a, int64_t b) {
-  return a < b ? a : b;
+    return a < b ? a : b;
 }
 
 /* Chunk size for blocks of one-sided operations; a fence is inserted after (at

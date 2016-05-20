@@ -14,8 +14,8 @@ docker build --rm -t cly753/openmpi .
 # from repo cly753
 # with name openmpi
 # with not tag
-# and mount $(pwd)/mpi-hello-world to container /mpi-hello-world
-docker run -it -v $(pwd)/mpi-hello-world:/mpi-hello-world cly753/openmpi
+# and mount /Users/cly/Dropbox/code/isc/graph500/graph500-2.1.4 to container /graph500-2.1.4
+docker run -it -v /Users/cly/Dropbox/code/isc/graph500/graph500-2.1.4:/graph500-2.1.4 cly753/openmpi
 
 # open a bash in the running container
 # docker exec -it [CONTAINER] bash

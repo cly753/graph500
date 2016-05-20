@@ -9,7 +9,7 @@ CWD = os.path.realpath(os.getcwd())
 
 HOST_FILE_NAME = "compute_host"
 
-USE_HOSTFILE = False
+USE_HOSTFILE = not os.path.isfile("/.dockerenv")
 
 
 def find_MPI():
@@ -84,7 +84,7 @@ def run(scale, degree, n_proc_each, executable, do_compile):
     :param executable: program binary to run, compiled by make
     :return:
     """
-    print "degree: " + str(degree)
+
     pow_of_two = ((n_proc_each & (n_proc_each - 1)) == 0) and n_proc_each > 0
     if not pow_of_two:
         raise Exception("n_proc_each is not of power of two")
@@ -95,6 +95,7 @@ def run(scale, degree, n_proc_each, executable, do_compile):
             sys.stderr.write(p_err + "\n")
         show_stdx(p_out=p_out, show_out=False, p_err=p_err, show_err=False, returncode=returncode, msg="make failed")
 
+    full_helper_message = ["-mca", "orte_base_help_aggregate", "0"]
     run_root = "--allow-run-as-root"
     host_file = "--hostfile"
     np = "-np"
@@ -112,6 +113,7 @@ def run(scale, degree, n_proc_each, executable, do_compile):
         cmd = [MPI, run_root, host_file, HOST_FILE_NAME, np, str(n_proc_total), executable, str(scale), str(degree), redirect, output_file]
     else:
         cmd = [MPI, run_root, np, str(n_proc_total), executable, str(scale), str(degree), redirect, output_file]
+    cmd[1:1] = full_helper_message
 
     cmd = " ".join(cmd)
     print cmd

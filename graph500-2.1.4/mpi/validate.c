@@ -362,13 +362,22 @@ int validate_bfs_result(const tuple_graph* const tg, const int64_t nglobalverts,
           if (src_depth != UINT16_MAX && tgt_depth == UINT16_MAX) {
             fprintf(stderr, "%d: Validation error: edge connects vertex %" PRId64 " in the BFS tree (depth %" PRIu16 ") to vertex %" PRId64 " outside the tree.\n", rank, src, src_depth, tgt);
             validation_passed = 0;
+
+            // --- cly ---
+            i = i_end;
           } else if (src_depth == UINT16_MAX && tgt_depth != UINT16_MAX) {
             fprintf(stderr, "%d: Validation error: edge connects vertex %" PRId64 " in the BFS tree (depth %" PRIu16 ") to vertex %" PRId64 " outside the tree.\n", rank, tgt, tgt_depth, src);
             validation_passed = 0;
+
+            // --- cly ---
+            i = i_end;
           } else if (src_depth - tgt_depth < -1 ||
                      src_depth - tgt_depth > 1) {
             fprintf(stderr, "%d: Validation error: depths of edge endpoints %" PRId64 " (depth %" PRIu16 ") and %" PRId64 " (depth %" PRIu16 ") are too far apart (abs. val. > 1).\n", rank, src, src_depth, tgt, tgt_depth);
             validation_passed = 0;
+
+            // --- cly ---
+            i = i_end;
           } else if (src_depth != UINT16_MAX) {
             ++edge_visit_count;
           }
@@ -399,6 +408,9 @@ int validate_bfs_result(const tuple_graph* const tg, const int64_t nglobalverts,
         int64_t v = vertex_to_global_for_pred(rank, i);
         fprintf(stderr, "%d: Validation error: no graph edge from vertex %" PRId64 " to its parent %" PRId64 ".\n", rank, v, get_pred_from_pred_entry(pred[i]));
         validation_passed = 0;
+
+        // --- cly ---
+        i = nlocalverts;
       }
     }
     MPI_Free_mem(pred_valid);

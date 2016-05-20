@@ -30,6 +30,52 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+// --- cly ---
+// #include <stdbool.h>
+#include "constants.h"
+// #include "save.h"
+#include "print.h"
+#include <bfs.h>
+
+
+void show_graph(const tuple_graph* const tg, int64_t n) {
+    const int size = 32;
+    if (n > size) {
+        PRINTLN("n > %d, skip show grpah", size);
+        return;
+    }
+
+    char gggraph[size][size];
+    memset(gggraph, 0, size * size * sizeof(char));
+    int i, j;
+    for (i = 0; i < tg->nglobaledges; i++) {
+        if (tg->edgememory == NULL) {
+            PRINTLN("[ERROR] tg->edgememory == NULL")
+        }
+        packed_edge* e = &tg->edgememory[i];
+        if (e == NULL) {
+            PRINTLN("[ERROR] e == NULL")
+        }
+        int from = (int)get_v0_from_edge(e);
+        int to = (int)get_v1_from_edge(e);
+        PRINTLN("from: %d, to: %d", from, to)
+        gggraph[from][to] = gggraph[to][from] = 1;
+    }
+    PRINT("[--]:", i)
+    for (j = 0; j < n; j++) {
+        PRINT(" %2d", j)
+    }
+    PRINTLN("")
+    for (i = 0; i < n; i++) {
+        PRINT("[%02d]:", i)
+        for (j = 0; j < n; j++) {
+            PRINT(" %2d", gggraph[i][j])
+        }
+        PRINTLN("")
+    }
+    PRINTLN("")
+}
+
 static int compare_doubles(const void *a, const void *b) {
     double aa = *(const double *) a;
     double bb = *(const double *) b;
@@ -77,6 +123,11 @@ int main(int argc, char **argv) {
     int edgefactor = 16; /* nedges / nvertices, i.e., 2*avg. degree */
     if (argc >= 2) SCALE = atoi(argv[1]);
     if (argc >= 3) edgefactor = atoi(argv[2]);
+    
+    // --- cly ---
+    if (rank == 0)
+        PRINTLN("SCALE: %d, edge factor: %d", SCALE, edgefactor)
+
     if (argc <= 1 || argc >= 4 || SCALE == 0 || edgefactor == 0) {
         if (rank == 0) {
             fprintf(stderr,
@@ -89,7 +140,6 @@ int main(int argc, char **argv) {
 
     const char *filename = getenv("TMPFILE");
     /* If filename is NULL, store data in memory */
-
     tuple_graph tg;
     tg.nglobaledges = (int64_t) (edgefactor) << SCALE;
     int64_t nglobalverts = (int64_t) (1) << SCALE;
@@ -179,6 +229,7 @@ int main(int argc, char **argv) {
                 tg.edgememory = (packed_edge *) xmalloc(nedges * sizeof(packed_edge));
             }
             MPI_Offset block_idx;
+
             for (block_idx = 0; block_idx < block_limit; ++block_idx) {
                 /* fprintf(stderr, "%d: On block %d of %d\n", rank, (int)block_idx, (int)block_limit); */
                 MPI_Offset start_edge_index = int64_min(FILE_CHUNKSIZE * (block_idx * nrows + my_row), tg.nglobaledges);
@@ -203,6 +254,18 @@ int main(int argc, char **argv) {
                     int64_t src = get_v0_from_edge(&actual_buf[i]);
                     int64_t tgt = get_v1_from_edge(&actual_buf[i]);
                     if (src == tgt) continue;
+
+                     // --- cly ---
+//                     int64_t a = src;
+//                     int64_t b = tgt;
+//                     if (a > b) {
+//                         a ^= b;
+//                         b ^= a;
+//                         a ^= b;
+//                     }
+//                     PRINTLN("edge[%d]: %"PRId64" - %"PRId64"", i, a, b)
+
+
                     if (src / bitmap_size_in_bytes / CHAR_BIT == my_col) {
 #ifdef _OPENMP
 #pragma omp atomic
@@ -289,6 +352,16 @@ int main(int argc, char **argv) {
         fprintf(stderr, "graph_generation:               %f s\n", make_graph_time);
     }
 
+
+    // --- cly ---
+    // bool ok = load(&tg, SCALE, edgefactor, bfs_roots, num_bfs_roots);
+    // bool ok = save(&tg, SCALE, edgefactor, bfs_roots, num_bfs_roots);
+    MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL);
+
+    if (rank == 0) {
+        show_graph(&tg, nglobalverts);
+    }
+
     /* Make user's graph data structure. */
     double data_struct_start = MPI_Wtime();
     make_graph_data_structure(&tg);
@@ -313,7 +386,7 @@ int main(int argc, char **argv) {
     for (bfs_root_idx = 0; bfs_root_idx < num_bfs_roots; ++bfs_root_idx) {
         int64_t root = bfs_roots[bfs_root_idx];
 
-        if (rank == 0) fprintf(stderr, "Running BFS %d\n", bfs_root_idx);
+        if (rank == 0) fprintf(stderr, "Running BFS %d (%"PRId64")\n", bfs_root_idx, bfs_roots[bfs_root_idx]);
 
         /* Clear the pred array. */
         memset(pred, 0, nlocalverts * sizeof(int64_t));
@@ -330,9 +403,15 @@ int main(int argc, char **argv) {
 
         double validate_start = MPI_Wtime();
         int64_t edge_visit_count;
+
+        // --- cly ---
+#ifndef SKIP_VALIDATE
         int validation_passed_one = validate_bfs_result(&tg, max_used_vertex + 1, nlocalverts, root, pred,
                                                         &edge_visit_count);
-
+#else
+        int validation_passed_one = 1;
+#endif
+        if (rank == 0) fprintf(stderr, "edge count: %"PRId64"\n", edge_visit_count);
         double validate_stop = MPI_Wtime();
         validate_times[bfs_root_idx] = validate_stop - validate_start;
         if (rank == 0) fprintf(stderr, "Validate time for BFS %d is %f\n", bfs_root_idx, validate_times[bfs_root_idx]);
