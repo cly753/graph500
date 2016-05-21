@@ -67,8 +67,7 @@ void add_parent(int64_t from, int64_t to) {
     PRINTLN("rank %02d: add parent from %2d to %2d at idx: %d", rank, from, to, (int)idx)
 #endif
     parent_next[idx] = from;
-    idx++;
-    parent_next[idx] = to;
+    parent_next[idx + 1] = to;
     send_count[owner] += 2;
 }
 

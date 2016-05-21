@@ -55,6 +55,12 @@ int have_more_bottom_up() {
 }
 
 void sync_bottom_up() {
+#ifdef SHOWDEBUG
+    MPI_Barrier(MPI_COMM_WORLD);
+    PRINTLN("rank %02d: frontier_next:", rank)
+    show_global(frontier_next);
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
     // allreduce to broadcast frontier
     MPI_Allreduce(
             frontier_next, // void* send_data
@@ -65,6 +71,12 @@ void sync_bottom_up() {
             MPI_COMM_WORLD // MPI_Comm communicator
     );
     memset(frontier_next, 0, global_long_nb);
+#ifdef SHOWDEBUG
+    MPI_Barrier(MPI_COMM_WORLD);
+    PRINTLN("rank %02d: frontier:", rank)
+    show_global(frontier);
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
 }
 
 inline int in_frontier(int64_t node) {
@@ -84,6 +96,24 @@ void one_step_bottom_up() {
                     break;
                 }
             }
+        }
+    }
+}
+
+void switch_to_bottom_up() { // use after one-step
+    sync();
+    int i;
+    for (i = 0; parent_cur[i] != -1; i++) {
+        int64_t from = parent_cur[i];
+        i++;
+        int64_t to = parent_cur[i];
+        int64_t to_local = VERTEX_LOCAL(to);
+#ifdef SHOWDEBUG
+        PRINTLN("rank %02d: from %d to %d (local %d)", rank, (int)from, (int)to, (int)to_local)
+#endif
+        if (pred[to_local] == -1) {
+            pred[to_local] = from;
+            SET_GLOBAL(to, frontier_next);
         }
     }
 }

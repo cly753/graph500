@@ -27,8 +27,8 @@ void show_pred() {
 }
 
 int bottom_up_better() {
-    int64_t mf = 0;
-    int64_t mu = 0;
+    int64_t mf = 0; // number of edges connecting frontier nodes
+    int64_t mu = 0; // number of edges connecting unvisited nodes
     return 0;
 }
 
