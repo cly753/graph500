@@ -40,25 +40,7 @@
 //}
 
 
-//void show_local(unsigned long* a) {
-//    int i;
-//    char s[65];
-//    for (i = 0; i < local_long_n; i++) {
-//        print_binary_long(a[i], s);
-//        PRINT("%s ", s);
-//    }
-//    PRINTLN("")
-//}
-//
-//void show_global(unsigned long* a) {
-//    int i;
-//    char s[65];
-//    for (i = 0; i < global_long_n; i++) {
-//        print_binary_long(a[i], s);
-//        PRINT("%s ", s);
-//    }
-//    PRINTLN("")
-//}
+
 //void show_all() {
 ////    PRINTLN("rank %02d: g_cur:", rank)
 ////    show_global(g_cur);

@@ -6,4 +6,6 @@
 // #define SKIP_VALIDATE
 #endif
 
+//#define BOTTOM_UP
+
 #endif //MPI_CONSTANTS_H

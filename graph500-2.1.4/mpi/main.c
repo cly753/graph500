@@ -386,7 +386,7 @@ int main(int argc, char **argv) {
     for (bfs_root_idx = 0; bfs_root_idx < num_bfs_roots; ++bfs_root_idx) {
         int64_t root = bfs_roots[bfs_root_idx];
 
-        if (rank == 0) fprintf(stderr, "Running BFS %d (%"PRId64")\n", bfs_root_idx, bfs_roots[bfs_root_idx]);
+        if (rank == 0) fprintf(stderr, "Running BFS %d (root=%"PRId64")\n", bfs_root_idx, bfs_roots[bfs_root_idx]);
 
         /* Clear the pred array. */
         memset(pred, 0, nlocalverts * sizeof(int64_t));

@@ -8,10 +8,16 @@
 
 #define LONG_BITS (sizeof(unsigned long) * CHAR_BIT)
 
-int64_t local_long_n;
-int64_t local_long_nb;
-int64_t global_long_n;
-int64_t global_long_nb;
+#define SET_LOCAL(v, a) do {(a)[VERTEX_LOCAL((v)) / LONG_BITS] |= (1UL << (VERTEX_LOCAL((v)) % LONG_BITS));} while (0)
+#define TEST_LOCAL(v, a) (((a)[VERTEX_LOCAL((v)) / LONG_BITS] & (1UL << (VERTEX_LOCAL((v)) % LONG_BITS))) != 0)
+
+#define SET_GLOBAL(v, a) do {(a)[(v) / LONG_BITS] |= (1UL << ((v) % LONG_BITS));} while (0)
+#define TEST_GLOBAL(v, a) (((a)[(v) / LONG_BITS] & (1UL << ((v) % LONG_BITS))) != 0)
+
+int local_long_n;
+size_t local_long_nb;
+int global_long_n;
+size_t global_long_nb;
 
 //unsigned long *g_cur;
 //unsigned long *g_next;

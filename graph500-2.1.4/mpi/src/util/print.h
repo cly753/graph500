@@ -5,6 +5,10 @@
 #undef REACH_HERE
 #endif
 
+#ifdef REACH_HERE_RANK
+#undef REACH_HERE_RANK
+#endif
+
 #ifdef PRINT
 #undef PRINT
 #endif
@@ -37,6 +41,8 @@
 #ifdef DOPRINT
 
 #define REACH_HERE { fprintf(stderr, "REACH_HERE %s:%d\n", __FUNCTION__, __LINE__); fflush(stderr); }
+#define REACH_HERE_RANK { fprintf(stderr, "rank %02d: REACH_HERE %s:%d\n", rank, __FUNCTION__, __LINE__); fflush(stderr); }
+
 #define PRINT(s, ...) { fprintf(stderr, s, ##__VA_ARGS__); fflush(stderr); }
 #define PRINTLN(s, ...) { fprintf(stderr, s "\n", ##__VA_ARGS__); fflush(stderr); }
 
@@ -59,6 +65,7 @@
 #else
 
 #define REACH_HERE {;}
+#define REACH_HERE_RANK {;}
 #define PRINT(s, ...) {;}
 #define PRINTLN(s, ...) {;}
 
