@@ -17,6 +17,14 @@
 #undef PRINTLN
 #endif
 
+#ifdef PRINT_RANK
+#undef PRINT_RANK
+#endif
+
+#ifdef PRINTLN_RANK
+#undef PRINTLN_RANK
+#endif
+
 #ifdef SHOWINT
 #undef SHOWINT
 #endif
@@ -35,9 +43,6 @@
 
 #include <assert.h>
 
-//#define SHOWDEBUG
-
-#define DOPRINT
 #ifdef DOPRINT
 
 #define REACH_HERE { fprintf(stderr, "REACH_HERE %s:%d\n", __FUNCTION__, __LINE__); fflush(stderr); }
@@ -45,6 +50,10 @@
 
 #define PRINT(s, ...) { fprintf(stderr, s, ##__VA_ARGS__); fflush(stderr); }
 #define PRINTLN(s, ...) { fprintf(stderr, s "\n", ##__VA_ARGS__); fflush(stderr); }
+
+#define PRINT_RANK(s, ...) { fprintf(stderr, "rank %02d: " s, rank, ##__VA_ARGS__); fflush(stderr); }
+#define PRINTLN_RANK(s, ...) { fprintf(stderr, "rank %02d: " s "\n", rank, ##__VA_ARGS__); fflush(stderr); }
+
 
 #define SHOWINT(x) { fprintf(stderr, "%s = %d\n", #x, (x)); fflush(stderr); }
 #define SHOWLONG(x) { fprintf(stderr, "%s = %"PRId64"\n", #x, (x)); fflush(stderr); }

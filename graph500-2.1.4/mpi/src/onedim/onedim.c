@@ -43,6 +43,65 @@ oned_csr_graph g;
 //     int64_t nglobaledges; /* Number of edges in graph, in both cases */
 // } tuple_graph;
 
+void show_csr() {
+    int i;
+    for (i = 0; i < g.nlocalverts; i++) {
+        int j;
+        PRINT_RANK("vertex %d >", VERTEX_TO_GLOBAL(rank, i))
+        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+            PRINT(" [%d]%d", j, g.column[j])
+        }
+        PRINTLN("")
+    }
+}
+
+void filter_duplicate_edge() {
+    int64_t *exist = xmalloc(global_long_nb);
+    int new_j = 0;
+    int new_start = -1;
+    int i;
+    for (i = 0; i < g.nlocalverts; i++) {
+        memset(exist, 0, global_long_nb);
+        new_start = new_j;
+        int j;
+        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+            if (!TEST_GLOBAL(g.column[j], exist)) {
+                SET_GLOBAL(g.column[j], exist);
+                g.column[new_j] = g.column[j];
+                new_j++;
+            }
+        }
+        g.rowstarts[i] = new_start;
+    }
+    g.rowstarts[i] = new_j;
+    free(exist);
+}
+
+void count_duplicate_edge() {
+    int64_t *exist = xmalloc(global_long_nb);
+    int i;
+    int total_duplicated_edge = 0;
+    int total_edge = g.rowstarts[g.nlocalverts - 1] - g.rowstarts[0];
+    for (i = 0; i < g.nlocalverts; i++) {
+        memset(exist, 0, global_long_nb);
+        int duplicated_edge = 0;
+        int j;
+        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+            if (TEST_GLOBAL(g.column[j], exist))
+                duplicated_edge++;
+            else
+                SET_GLOBAL(g.column[j], exist);
+        }
+        total_duplicated_edge += duplicated_edge;
+        int64_t global_i = VERTEX_TO_GLOBAL(rank, i);
+        int edge = g.rowstarts[i + 1] - g.rowstarts[i];
+//        PRINTLN_RANK("vertex %d have %d duplicated edges (total %d edges) (%3f).",
+//                (int)global_i, duplicated_edge, edge, duplicated_edge / (float)edge)
+    }
+    PRINTLN_RANK("summary: %d vertex have %d duplicated edges (total %d edges) (%3f).",
+        (int)g.nlocalverts, total_duplicated_edge, total_edge, total_duplicated_edge / (float)total_edge)
+    free(exist);
+}
 
 void make_graph_data_structure(const tuple_graph* const tg) {
     convert_graph_to_oned_csr(tg, &g);
@@ -52,15 +111,23 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     global_long_n = (g.nglobalverts + LONG_BITS - 1) / LONG_BITS;
     global_long_nb = global_long_n * sizeof(unsigned long);
 
-//    g_cur = (unsigned long) xmalloc(global_long_nb);
-//    g_next = (unsigned long) xmalloc(global_long_nb);
+#ifdef FILER_EDGE
+#ifdef SHOWDEBUG
+    show_csr();
+#endif
+    count_duplicate_edge();
+    filter_duplicate_edge();
+#ifdef SHOWDEBUG
+    show_csr();
+#endif
+    count_duplicate_edge();
+#endif
 }
 
 void free_graph_data_structure(void) {
     free_oned_csr_graph(&g);
 
-//    free(g_cur);
-//    free(g_next);
+    // TODO free others
 }
 
 int bfs_writes_depth_map(void) {

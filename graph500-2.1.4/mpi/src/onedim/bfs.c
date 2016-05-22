@@ -66,12 +66,16 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     init_bottom_up();
 #endif
 
-    double level_start;
-    double level_stop;
 
     int root_owner = VERTEX_OWNER(root);
+
+#ifdef SHOWTIMER
+    double level_start;
+    double level_stop;
     if (rank == root_owner)
         level_start = MPI_Wtime();
+#endif
+
     if (rank == root_owner) {
 #ifdef SHOWDEBUG
         PRINTLN("rank %02d: root: %d", rank, (int)root)
@@ -89,36 +93,50 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         show_pred();
 #endif
     }
+
+#ifdef SHOWTIMER
     if (rank == root_owner) {
         level_stop = MPI_Wtime();
         PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
     }
+#endif
 
 #ifdef BOTTOM_UP
     while (1) {
+#ifdef SHOWTIMER
         if (rank == root_owner)
             level_start = MPI_Wtime();
+#endif
         sync_bottom_up();
         if (!have_more_bottom_up())
             break;
         one_step_bottom_up();
+#ifdef SHOWDEBUG
+        show_pred();
+#endif
+#ifdef SHOWTIMER
         if (rank == root_owner) {
             level_stop = MPI_Wtime();
             PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
         }
+#endif
     }
 #else
     while (1) {
+#ifdef SHOWTIMER
         if (rank == root_owner)
             level_start = MPI_Wtime();
+#endif
         if (!have_more())
             break;
         sync();
         one_step();
+#ifdef SHOWTIMER
         if (rank == root_owner) {
             level_stop = MPI_Wtime();
             PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
         }
+#endif
 #ifdef SHOWDEBUG
         PRINTLN("rank %02d: one more level", rank)
         show_parent();
