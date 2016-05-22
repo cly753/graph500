@@ -26,6 +26,7 @@
 
 - Level-synchronized bottom-up BFS.
 - Bitmap tracking global frontier.
+- Filter duplicated edges.
 
 ##### Profiling
 
