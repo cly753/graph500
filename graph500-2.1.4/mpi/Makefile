@@ -13,10 +13,10 @@ GENERATOR_SOURCES = ../generator/graph_generator.c ../generator/make_graph.c ../
 SOURCES_ = main.c oned_csr.c oned_csc.c utils.c validate.c onesided.c onesided_emul.c
 HEADERS_ = common.h oned_csr.h oned_csc.h redistribute.h mpi_workarounds.h onesided.h
 
-HEADERS = ${HEADERS_} src/constants.h src/util/print.h src/onedim/bfs.h src/onedim/bottom_up.h src/onedim/parent_tracker.h
+HEADERS = ${HEADERS_} src/constants.h src/util/print.h src/onedim/bfs.h src/onedim/top_down.h src/onedim/bottom_up.h src/onedim/frontier_tracker.h src/onedim/parent_tracker.h
 # HEADERS = ${HEADERS_}
 SOURCES = ${SOURCES_} src/util/print.c
-SOURCES_ONEDIM = src/onedim/onedim.c src/onedim/bfs.c src/onedim/bottom_up.c src/onedim/parent_tracker.c
+SOURCES_ONEDIM = src/onedim/onedim.c src/onedim/bfs.c src/onedim/top_down.c src/onedim/bottom_up.c src/onedim/frontier_tracker.c src/onedim/parent_tracker.c
 # SOURCES = ${SOURCES_}
 
 graph500_mpi_simple: bfs_simple.c $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES)

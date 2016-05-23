@@ -1,5 +1,6 @@
 #include "common.h"
 #include "oned_csr.h"
+#include "oned_csc.h"
 #include <mpi.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -14,6 +15,8 @@
 #include "bfs.h"
 
 oned_csr_graph g;
+//oned_csc_graph g_csc;
+
 // typedef struct oned_csr_graph {
 //     size_t nlocalverts;
 //     int64_t max_nlocalverts;
@@ -43,17 +46,89 @@ oned_csr_graph g;
 //     int64_t nglobaledges; /* Number of edges in graph, in both cases */
 // } tuple_graph;
 
-void show_csr() {
+int64_t *in_edge_start;
+int64_t *in_edge_to; // global index
+
+void show_in_edge() {
     int i;
-    for (i = 0; i < g.nlocalverts; i++) {
+    for (i = 0; i < g.nglobalverts; i++) {
+        PRINT_RANK("in edge: %d >", i)
         int j;
-        PRINT_RANK("vertex %d >", VERTEX_TO_GLOBAL(rank, i))
-        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
-            PRINT(" [%d]%d", j, g.column[j])
+        for (j = in_edge_start[i]; j < in_edge_start[i + 1]; j++) {
+            PRINT(" %d", (int)in_edge_to[j])
         }
         PRINTLN("")
     }
 }
+
+void csr_to_in_edge() {
+    // size of in_edge_count_global array in bytes
+    int64_t in_edge_count_global_b_size = g.nglobalverts * sizeof(int64_t);
+    int64_t *in_edge_count_global = xmalloc(in_edge_count_global_b_size);
+    memset(in_edge_count_global, 0, in_edge_count_global_b_size);
+
+    int i;
+    for (i = 0; i < g.nlocalverts; i++) {
+        int j;
+        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+            // [index]: index is global vertex index
+            // so count how many edges pointing to local vertex
+            in_edge_count_global[g.column[j]]++;
+        }
+    }
+
+    // one more for end index of last vertex
+    in_edge_start = xmalloc(in_edge_count_global_b_size + sizeof(int64_t));
+    in_edge_start[0] = 0;
+    for (i = 1; i <= g.nglobalverts; i++) {
+        // accumulate count
+        in_edge_start[i] = in_edge_start[i - 1] + in_edge_count_global[i - 1];
+    }
+    // for each local edge from-to
+    // the index in in_edge_to at which the to vertex should be placed
+    // reuse memory of in_edge_count_global
+    int64_t *cur_fill_index = in_edge_count_global;
+    memcpy(cur_fill_index, in_edge_start, in_edge_count_global_b_size);
+
+    in_edge_to = xmalloc(g.rowstarts[g.nlocalverts] * sizeof(int64_t));
+    for (i = 0; i < g.nlocalverts; i++) {
+        int i_global = VERTEX_TO_GLOBAL(rank, i);
+        int j;
+        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+            // the other end of the edge
+            // global index
+            int64_t to = g.column[j];
+            in_edge_to[cur_fill_index[to]] = i_global;
+            cur_fill_index[to]++;
+        }
+    }
+    // cur_fill_index's memory is same as in_edge_count_global
+    free(in_edge_count_global);
+}
+
+void show_csr() {
+    int i;
+    for (i = 0; i < g.nlocalverts; i++) {
+        int j;
+        PRINT_RANK("vertex %d >", (int)(VERTEX_TO_GLOBAL(rank, i)))
+        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+            PRINT(" [%d]%d", j, (int)g.column[j])
+        }
+        PRINTLN("")
+    }
+}
+
+//void show_csc() {
+//    int i;
+//    for (i = 0; i < g.nlocalverts; i++) {
+//        int j;
+//        PRINT_RANK("csc: %d - ", VERTEX_TO_GLOBAL(rank, i))
+//        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
+//            PRINT(" [%d]%d", j, g.column[j])
+//        }
+//        PRINTLN("")
+//    }
+//}
 
 void filter_duplicate_edge() {
     int64_t *exist = xmalloc(global_long_nb);
@@ -82,6 +157,7 @@ void count_duplicate_edge() {
     int i;
     int total_duplicated_edge = 0;
     int total_edge = g.rowstarts[g.nlocalverts - 1] - g.rowstarts[0];
+    int zero_edge_vertex = 0;
     for (i = 0; i < g.nlocalverts; i++) {
         memset(exist, 0, global_long_nb);
         int duplicated_edge = 0;
@@ -93,18 +169,32 @@ void count_duplicate_edge() {
                 SET_GLOBAL(g.column[j], exist);
         }
         total_duplicated_edge += duplicated_edge;
-        int64_t global_i = VERTEX_TO_GLOBAL(rank, i);
+//        int64_t global_i = VERTEX_TO_GLOBAL(rank, i);
         int edge = g.rowstarts[i + 1] - g.rowstarts[i];
+        if (edge == 0)
+            zero_edge_vertex++;
 //        PRINTLN_RANK("vertex %d have %d duplicated edges (total %d edges) (%3f).",
 //                (int)global_i, duplicated_edge, edge, duplicated_edge / (float)edge)
     }
-    PRINTLN_RANK("summary: %d vertex have %d duplicated edges (total %d edges) (%3f).",
-        (int)g.nlocalverts, total_duplicated_edge, total_edge, total_duplicated_edge / (float)total_edge)
+    PRINTLN_RANK("summary: %d vertex have %d duplicated edges (total %d edges) (%3f), %d zero edge vertex (%3f).",
+                 (int)g.nlocalverts, total_duplicated_edge, total_edge,
+                 total_duplicated_edge / (float)total_edge, zero_edge_vertex,
+                 zero_edge_vertex / (float)g.nlocalverts)
     free(exist);
 }
 
 void make_graph_data_structure(const tuple_graph* const tg) {
+    PRINTLN_RANK("tg->edgememory_size=%"PRId64", sizeof(tuple_graph)=%"PRId64, tg->edgememory_size, sizeof(tuple_graph))
+
     convert_graph_to_oned_csr(tg, &g);
+
+//    tuple_graph* tg2 = xmalloc(sizeof(tuple_graph));
+//    tg2 = tg;
+//    tg2->edgememory = xmalloc(tg->edgememory_size);
+//    memcpy(tg2->edgememory, tg->edgememory, tg->edgememory_size);
+//    convert_graph_to_oned_csc(tg2, &g_csc);
+//    PRINTLN_RANK("converted, showing csc ...")
+//    show_csc();
 
     local_long_n = (g.nlocalverts + LONG_BITS - 1) / LONG_BITS;
     local_long_nb = local_long_n * sizeof(unsigned long);
@@ -121,6 +211,11 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     show_csr();
 #endif
     count_duplicate_edge();
+#endif
+
+    csr_to_in_edge();
+#ifdef SHOWDEBUG
+    show_in_edge();
 #endif
 }
 

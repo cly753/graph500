@@ -1,77 +1,74 @@
 #include "bfs.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "constants.h"
 #include "print.h"
+#include "top_down.h"
 #include "bottom_up.h"
-#include "parent_tracker.h"
+#include "frontier_tracker.h"
 
 extern oned_csr_graph g;
 int64_t *pred;
 
 extern int64_t *parent_cur;
 
-void show_pred() {
+void show_local(int64_t *a) {
     int i;
-    PRINT("rank %02d: index:", rank)
-    for (i = 0; i < g.nlocalverts; i++) {
-        PRINT(" %2d", VERTEX_TO_GLOBAL(rank, i))
+    char s[65];
+    for (i = 0; i < local_long_n; i++) {
+        print_binary_long(a[i], s);
+        PRINT("%s ", s);
     }
     PRINTLN("")
-    PRINT("rank %02d: pred :", rank)
+}
+
+void show_global(int64_t *a) {
+    int i;
+    char s[65];
+    for (i = 0; i < global_long_n; i++) {
+        print_binary_long(a[i], s);
+        PRINT("%s ", s);
+    }
+    PRINTLN("")
+}
+
+void show_pred() {
+    int i;
+    PRINT_RANK("index:")
     for (i = 0; i < g.nlocalverts; i++) {
-        PRINT(" %2d", pred[i])
+        PRINT(" %2d", (int) VERTEX_TO_GLOBAL(rank, i))
+    }
+    PRINTLN("")
+    PRINT_RANK("pred :")
+    for (i = 0; i < g.nlocalverts; i++) {
+        PRINT(" %2d", (int) pred[i])
     }
     PRINTLN("")
 }
 
 int bottom_up_better() {
-    int64_t mf = 0; // number of edges connecting frontier nodes
-    int64_t mu = 0; // number of edges connecting unvisited nodes
-    return 0;
-}
+//    int64_t mf = 0; // number of edges connecting frontier nodes
+//    int64_t mu = 0; // number of edges connecting unvisited nodes
 
-void one_step() {
-    int i;
-    for (i = 0; parent_cur[i] != -1; i++) {
-        int64_t from = parent_cur[i];
-        i++;
-        int64_t to = parent_cur[i];
-        int64_t to_local = VERTEX_LOCAL(to);
-#ifdef SHOWDEBUG
-        PRINTLN("rank %02d: from %d to %d (local %d)", rank, (int)from, (int)to, (int)to_local)
-#endif
-        if (pred[to_local] == -1) {
-            pred[to_local] = from;
-            int j;
-            for (j = g.rowstarts[to_local]; j < g.rowstarts[to_local + 1]; j++) {
-                int64_t next_to = g.column[j];
-                add_parent(to, next_to);
-            }
-        }
-    }
+    // TODO
+    // see Direction-Optimizing Breadth-First Search
+    // for how to make decision
+
+    return 0;
 }
 
 void init() {
     memset(pred, -1, g.nlocalverts * sizeof(int64_t));
 }
 
-void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
-    init_parent_tracker();
-    pred = predpred;
-    init();
-
-#ifdef BOTTOM_UP
-    init_bottom_up();
-#endif
-
-
+void bfs_new_top_down(int64_t root) {
     int root_owner = VERTEX_OWNER(root);
 
 #ifdef SHOWTIMER
-    double level_start;
-    double level_stop;
+    double level_start = 0;
+    double level_stop = 0;
     if (rank == root_owner)
         level_start = MPI_Wtime();
 #endif
@@ -80,13 +77,10 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 #ifdef SHOWDEBUG
         PRINTLN("rank %02d: root: %d", rank, (int)root)
 #endif
-#ifdef BOTTOM_UP
+
         pred[VERTEX_LOCAL(root)] = root;
         SET_GLOBAL(root, frontier_next);
-#else
-        parent_cur[0] = parent_cur[1] = root;
-        one_step();
-#endif
+
 #ifdef SHOWDEBUG
         show_parent();
         show_counter();
@@ -101,16 +95,17 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     }
 #endif
 
-#ifdef BOTTOM_UP
     while (1) {
 #ifdef SHOWTIMER
         if (rank == root_owner)
             level_start = MPI_Wtime();
 #endif
-        sync_bottom_up();
-        if (!have_more_bottom_up())
+
+        sync_frontier();
+        if (!frontier_have_more())
             break;
-        one_step_bottom_up();
+        one_step_top_down();
+
 #ifdef SHOWDEBUG
         show_pred();
 #endif
@@ -121,30 +116,71 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         }
 #endif
     }
-#else
-    while (1) {
-#ifdef SHOWTIMER
-        if (rank == root_owner)
-            level_start = MPI_Wtime();
+}
+
+void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
+    pred = predpred;
+    init();
+    init_frontier();
+
+#ifndef BOTTOM_UP
+    PRINTLN(" --- top down ---")
+    bfs_new_top_down(root);
+    return ;
 #endif
-        if (!have_more())
-            break;
-        sync();
-        one_step();
+    PRINTLN(" --- bottom up ---")
+
+    int root_owner = VERTEX_OWNER(root);
+
 #ifdef SHOWTIMER
-        if (rank == root_owner) {
-            level_stop = MPI_Wtime();
-            PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
-        }
+    double level_start = 0;
+    double level_stop = 0;
+    if (rank == root_owner)
+        level_start = MPI_Wtime();
 #endif
+
+    if (rank == root_owner) {
 #ifdef SHOWDEBUG
-        PRINTLN("rank %02d: one more level", rank)
+        PRINTLN("rank %02d: root: %d", rank, (int)root)
+#endif
+
+        pred[VERTEX_LOCAL(root)] = root;
+        SET_GLOBAL(root, frontier_next);
+
+#ifdef SHOWDEBUG
         show_parent();
         show_counter();
         show_pred();
-        MPI_Barrier(MPI_COMM_WORLD);
 #endif
     }
+
+#ifdef SHOWTIMER
+    if (rank == root_owner) {
+        level_stop = MPI_Wtime();
+        PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
+    }
 #endif
+
+    while (1) {
+#ifdef SHOWTIMER
+        if (rank == root_owner)
+            level_start = MPI_Wtime();
+#endif
+
+        sync_frontier();
+        if (!frontier_have_more())
+            break;
+        one_step_bottom_up();
+
+#ifdef SHOWDEBUG
+        show_pred();
+#endif
+#ifdef SHOWTIMER
+        if (rank == root_owner) {
+            level_stop = MPI_Wtime();
+            PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
+        }
+#endif
+    }
 }
 

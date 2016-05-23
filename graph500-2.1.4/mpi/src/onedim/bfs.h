@@ -22,6 +22,9 @@ size_t global_long_nb;
 //unsigned long *g_cur;
 //unsigned long *g_next;
 
+void show_local(int64_t *a);
+
+void show_global(int64_t *a);
 
 void bfs(oned_csr_graph* g, int64_t root, int64_t* pred);
 

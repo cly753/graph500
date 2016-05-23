@@ -27,20 +27,20 @@ int have_more() {
 void show_counter() {
     PRINT("rank %02d: send cnt:", rank)
     int i;
-    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, (int) send_count[i])
+    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, send_count[i])
     PRINTLN("")
     PRINT("rank %02d: recv cnt:", rank)
-    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, (int) receive_count[i])
+    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, receive_count[i])
     PRINTLN("")
 }
 
 void show_displs() {
     PRINT("rank %02d: sdispls :", rank)
     int i;
-    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, (int) sdispls[i])
+    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, sdispls[i])
     PRINTLN("")
     PRINT("rank %02d: rdispls:", rank)
-    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, (int) rdispls[i])
+    for (i = 0; i < size_counter; i++) PRINT(" [%d]%d", i, rdispls[i])
     PRINTLN("")
 }
 
@@ -48,13 +48,13 @@ void show_parent() {
     PRINT("rank %02d: par cur :", rank)
     int i;
     for (i = 0; i < size_parent_total; i++) {
-        if (parent_cur[i] != -1) PRINT(" [%d]%d>%d", i, parent_cur[i], parent_cur[i + 1])
+        if (parent_cur[i] != -1) PRINT(" [%d]%d>%d", i, (int)parent_cur[i], (int)parent_cur[i + 1])
         i++;
     }
     PRINTLN("")
     PRINT("rank %02d: par next:", rank)
     for (i = 0; i < size_parent_total; i++) {
-        if (parent_next[i] != -1) PRINT(" [%d]%d>%d", i, parent_next[i], parent_next[i + 1])
+        if (parent_next[i] != -1) PRINT(" [%d]%d>%d", i, (int)parent_next[i], (int)parent_next[i + 1])
         i++;
     }
     PRINTLN("")

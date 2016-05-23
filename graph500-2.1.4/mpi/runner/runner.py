@@ -96,7 +96,7 @@ def run(scale, degree, n_proc_each, executable, do_compile):
         show_stdx(p_out=p_out, show_out=False, p_err=p_err, show_err=False, returncode=returncode, msg="make failed")
 
     full_helper_message = ["-mca", "orte_base_help_aggregate", "0"]
-    run_root = "--allow-run-as-root"
+    run_root = "--allow-run-as-root" if True else ""
     host_file = "--hostfile"
     np = "-np"
     output_file = get_output_file_name(scale=scale, degree=degree, n_proc_each=n_proc_each, executable=executable)

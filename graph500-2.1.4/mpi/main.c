@@ -61,7 +61,7 @@ void show_graph(const tuple_graph* const tg, int64_t n) {
         PRINTLN("from: %d, to: %d", from, to)
         gggraph[from][to] = gggraph[to][from] = 1;
     }
-    PRINT("[--]:", i)
+    PRINT("[--]:")
     for (j = 0; j < n; j++) {
         PRINT(" %2d", j)
     }
