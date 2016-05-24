@@ -1,6 +1,7 @@
 
 CMakeLists.txt
 graph500-2.1.4/mpi/compute_host
+graph500-2.1.4/mpi/ethernet_host.txtt
 graph500-2.1.4/mpi/output.*
 sync/
 **/.idea/

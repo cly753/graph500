@@ -12,6 +12,9 @@ extern int64_t *in_edge_start;
 extern int64_t *in_edge_to;
 
 void one_step_top_down() {
+#ifdef SHOWDEBUG
+    PRINTLN("--- top down ---")
+#endif
     int i;
     for (i = 0; i < g.nglobalverts; i++) {
         if (!TEST_GLOBAL(i, frontier))

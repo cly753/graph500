@@ -15,6 +15,9 @@ extern int64_t *frontier;
 extern int64_t *frontier_next;
 
 void one_step_bottom_up() {
+#ifdef SHOWDEBUG
+    PRINTLN("--- bottom up ---")
+#endif
     int i;
     for (i = 0; i < g.nlocalverts; i++) {
 #ifdef SHOWDEBUG

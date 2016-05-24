@@ -12,6 +12,7 @@ void init_frontier() {
     if (frontier_next == NULL)
         frontier_next = xmalloc(global_long_nb);
 
+    memset(frontier, 0, global_long_nb);
     memset(frontier_next, 0, global_long_nb);
 }
 

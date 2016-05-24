@@ -63,73 +63,11 @@ void init() {
     memset(pred, -1, g.nlocalverts * sizeof(int64_t));
 }
 
-void bfs_new_top_down(int64_t root) {
-    int root_owner = VERTEX_OWNER(root);
-
-#ifdef SHOWTIMER
-    double level_start = 0;
-    double level_stop = 0;
-    if (rank == root_owner)
-        level_start = MPI_Wtime();
-#endif
-
-    if (rank == root_owner) {
-#ifdef SHOWDEBUG
-        PRINTLN("rank %02d: root: %d", rank, (int)root)
-#endif
-
-        pred[VERTEX_LOCAL(root)] = root;
-        SET_GLOBAL(root, frontier_next);
-
-#ifdef SHOWDEBUG
-        show_parent();
-        show_counter();
-        show_pred();
-#endif
-    }
-
-#ifdef SHOWTIMER
-    if (rank == root_owner) {
-        level_stop = MPI_Wtime();
-        PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
-    }
-#endif
-
-    while (1) {
-#ifdef SHOWTIMER
-        if (rank == root_owner)
-            level_start = MPI_Wtime();
-#endif
-
-        sync_frontier();
-        if (!frontier_have_more())
-            break;
-        one_step_top_down();
-
-#ifdef SHOWDEBUG
-        show_pred();
-#endif
-#ifdef SHOWTIMER
-        if (rank == root_owner) {
-            level_stop = MPI_Wtime();
-            PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
-        }
-#endif
-    }
-}
-
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     pred = predpred;
     init();
     init_frontier();
 
-#ifndef BOTTOM_UP
-    PRINTLN(" --- top down ---")
-    bfs_new_top_down(root);
-    return ;
-#endif
-    PRINTLN(" --- bottom up ---")
-
     int root_owner = VERTEX_OWNER(root);
 
 #ifdef SHOWTIMER
@@ -145,14 +83,18 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 #endif
 
         pred[VERTEX_LOCAL(root)] = root;
-        SET_GLOBAL(root, frontier_next);
+    }
+
+    SET_GLOBAL(root, frontier);
+#ifdef BOTTOM_UP
+    one_step_bottom_up();
+#else
+    one_step_top_down();
+#endif
 
 #ifdef SHOWDEBUG
-        show_parent();
-        show_counter();
-        show_pred();
+    show_pred();
 #endif
-    }
 
 #ifdef SHOWTIMER
     if (rank == root_owner) {
@@ -170,7 +112,11 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         sync_frontier();
         if (!frontier_have_more())
             break;
+#ifndef BOTTOM_UP
+        one_step_top_down();
+#else
         one_step_bottom_up();
+#endif
 
 #ifdef SHOWDEBUG
         show_pred();
