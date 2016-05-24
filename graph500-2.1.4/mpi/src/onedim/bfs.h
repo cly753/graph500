@@ -5,6 +5,7 @@
 #include "limits.h"
 #include "common.h"
 #include "oned_csr.h"
+#include "constants.h"
 
 #define LONG_BITS (sizeof(unsigned long) * CHAR_BIT)
 
@@ -13,6 +14,24 @@
 
 #define SET_GLOBAL(v, a) do {(a)[(v) / LONG_BITS] |= (1UL << ((v) % LONG_BITS));} while (0)
 #define TEST_GLOBAL(v, a) (((a)[(v) / LONG_BITS] & (1UL << ((v) % LONG_BITS))) != 0)
+
+#ifdef SHOWTIMER
+#define TIME_IT(x, double_ptr_time_output) { \
+    if (rank == root_owner) { \
+        double time_start = MPI_Wtime(); \
+        x; \
+        double time_stop = MPI_Wtime(); \
+        double diff = time_stop - time_start; \
+        PRINTLN_RANK(#x " used %.6lfs", diff); \
+        *double_ptr_time_output = diff; \
+    } \
+    else { \
+        x; \
+    } \
+}
+#else
+#define TIME_IT(x, double_ptr_time_output) { x; *double_ptr_time_output = 0; }
+#endif
 
 int local_long_n;
 size_t local_long_nb;

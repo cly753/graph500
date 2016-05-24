@@ -16,7 +16,6 @@ void init_frontier() {
     memset(frontier_next, 0, global_long_nb);
 }
 
-
 void sync_frontier() {
 #ifdef SHOWDEBUG
     MPI_Barrier(MPI_COMM_WORLD);
