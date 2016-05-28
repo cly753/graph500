@@ -58,12 +58,15 @@ extern int64_t *in_edge_start;
 extern int64_t *in_edge_to;
 int now_top_down;
 int nth_call;
-const int nth_call_cutoff = 2;
+const int cutoff_to_bottom_up = 2; // first topdown->bottomup switch
+const int cutoff_to_top_down = 4; // first bottomup->topdown switch
 const float alpha = 0.2;
 const float beta = 10;
 int top_down_better() {
     // so good!
-    if (nth_call++ < nth_call_cutoff)
+    if (nth_call > cutoff_to_top_down)
+        return 0;
+    if (nth_call++ < cutoff_to_bottom_up)
         return 1;
     return 0;
 
@@ -137,12 +140,39 @@ void wrap_up() {
 //        PRINTLN_RANK("total visit: %d", &total_visit);
 }
 
+void bfs_gpu(int64_t root) {
+    if (rank == root_owner) {
+#ifdef SHOWDEBUG
+        PRINTLN("rank %02d: root: %d", rank, (int)root)
+#endif
+        pred[VERTEX_LOCAL(root)] = root;
+    }
+
+    SET_GLOBAL(root, frontier);
+
+    init_bottom_up_gpu();
+
+    while (1) {
+        one_step_bottom_up_gpu();
+
+        sync_frontier();
+
+        if (!frontier_have_more())
+            break;
+    }
+
+    end_bottom_up_gpu();
+}
+
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     pred = predpred;
     init();
     init_frontier();
 
     root_owner = VERTEX_OWNER(root);
+
+    bfs_gpu(root);
+    return ;
 
 #ifdef SHOWTIMER
     double level_start = 0;

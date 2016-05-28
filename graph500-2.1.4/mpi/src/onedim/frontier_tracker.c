@@ -5,6 +5,7 @@
 #include "oned_csr.h"
 
 #include "bfs.h"
+#include "print.h"
 
 void init_frontier() {
     if (frontier == NULL)

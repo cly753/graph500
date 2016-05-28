@@ -202,21 +202,21 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     global_long_nb = global_long_n * sizeof(unsigned long);
 
 #ifdef FILER_EDGE
-#ifdef SHOWDEBUG
-    show_csr();
-#endif
+// #ifdef SHOWDEBUG
+//     show_csr();
+// #endif
     count_duplicate_edge();
     filter_duplicate_edge();
-#ifdef SHOWDEBUG
-    show_csr();
-#endif
+// #ifdef SHOWDEBUG
+//     show_csr();
+// #endif
     count_duplicate_edge();
 #endif
 
-    csr_to_in_edge();
-#ifdef SHOWDEBUG
-    show_in_edge();
-#endif
+//    csr_to_in_edge();
+//#ifdef SHOWDEBUG
+//    show_in_edge();
+//#endif
 }
 
 void free_graph_data_structure(void) {
