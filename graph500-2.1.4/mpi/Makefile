@@ -40,7 +40,7 @@ graph500_mpi_custom: bfs_custom.c $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES)
 	$(MPICC) $(CFLAGS) $(LDFLAGS) -o graph500_mpi_custom bfs_custom.c $(SOURCES) $(GENERATOR_SOURCES) -lm
 
 
-NVCC       =  nvcc
+NVCC       = /usr/local/cuda-7.5/bin/nvcc
 CUDA_HOME  = /usr/local/cuda-7.5
 LIB_OPT  += -L$(CUDA_HOME)/lib64 -lcudart -lstdc++
 SUP_INCL += -I$(CUDA_HOME)/include
@@ -51,8 +51,8 @@ NV_LDFLAGS = -g
 NV_ARCH = sm_37
 
 HEADERS_ONEDIM_GPU = $(HEADERS)
-SOURCES_ONEDIM_GPU = src/onedim/bottom_up_gpu.cu
-OBJECT_ONEDIM_GPU = bottom_up_gpu.o
+SOURCES_ONEDIM_GPU = src/onedim/bottom_up_gpu_3.cu
+OBJECT_ONEDIM_GPU = bottom_up_gpu_3.o
 
 bottom_up_gpu: $(SOURCES_ONEDIM_GPU) $(HEADERS)
 	$(NVCC) $(NV_CFLAGS) -arch=$(NV_ARCH) -c $(SOURCES_ONEDIM_GPU)

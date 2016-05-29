@@ -39,7 +39,7 @@
 
 
 void show_graph(const tuple_graph* const tg, int64_t n) {
-    const int size = 32;
+    const int size = 64;
     if (n > size) {
         PRINTLN("n > %d, skip showing graph", size);
         return;

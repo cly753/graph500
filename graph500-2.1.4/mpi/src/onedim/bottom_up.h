@@ -11,4 +11,8 @@ void init_bottom_up_gpu();
 
 void end_bottom_up_gpu();
 
+void pred_to_gpu();
+
+void pred_from_gpu();
+
 #endif //MPI_BOTTOM_UP_H

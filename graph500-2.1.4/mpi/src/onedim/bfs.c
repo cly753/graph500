@@ -150,10 +150,13 @@ void bfs_gpu(int64_t root) {
 
     SET_GLOBAL(root, frontier);
 
-    init_bottom_up_gpu();
+    pred_to_gpu();
 
     while (1) {
         one_step_bottom_up_gpu();
+#ifdef SHOWDEBUG
+        show_pred();
+#endif
 
         sync_frontier();
 
@@ -161,7 +164,7 @@ void bfs_gpu(int64_t root) {
             break;
     }
 
-    end_bottom_up_gpu();
+    pred_from_gpu();
 }
 
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
@@ -181,7 +184,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 
     if (rank == root_owner) {
 #ifdef SHOWDEBUG
-        PRINTLN("rank %02d: root: %d", rank, (int)root)
+        PRINTLN_RANK("root: %d", rank, (int)root)
 #endif
         pred[VERTEX_LOCAL(root)] = root;
     }

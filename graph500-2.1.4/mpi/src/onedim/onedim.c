@@ -217,10 +217,15 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 //#ifdef SHOWDEBUG
 //    show_in_edge();
 //#endif
+
+    init_bottom_up_gpu();
+
 }
 
 void free_graph_data_structure(void) {
     free_oned_csr_graph(&g);
+
+    end_bottom_up_gpu();
 
     // TODO free others
 }

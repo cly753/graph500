@@ -3,6 +3,7 @@
 // CUDA-aware Open MPI
 // Now, the Open MPI library will automatically detect that the pointer being passed in is a CUDA device memory pointer and do the right thing. This is referred to as CUDA-aware support.
 // https://www.open-mpi.org/faq/?category=runcuda
+// https://devblogs.nvidia.com/parallelforall/introduction-cuda-aware-mpi/
 // 
 
 extern "C" {
@@ -246,6 +247,8 @@ void one_step_bottom_up_gpu() {
 // at least 2^4 blocks, each 2^9 thread -> 1x SM
 // 
 // lets try 2^6 blocks=64, each 2^7=128 thread
+// 
+// frontier bit map: 2^16 / 64 * 8 = 8k
 // 
 // 
 // without considering global memory
