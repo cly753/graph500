@@ -16,6 +16,7 @@ extern "C" {
 
 #include "constants.h"
 #include "bfs.h"
+#include "frontier_tracker.h"
 #include "print.h"
 
 // includes CUDA

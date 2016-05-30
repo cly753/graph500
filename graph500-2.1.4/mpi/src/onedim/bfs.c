@@ -140,6 +140,27 @@ void wrap_up() {
 //        PRINTLN_RANK("total visit: %d", &total_visit);
 }
 
+void bfs_gpu_cuda_ompi(int64_t root) {
+    if (rank == root_owner) {
+#ifdef SHOWDEBUG
+        PRINTLN("rank %02d: root: %d", rank, (int)root)
+#endif
+        init_pred_gpu(root);
+    }
+    set_frontier_gpu(root);
+
+    while (1) {
+        one_step_bottom_up_gpu();
+
+        sync_frontier_gpu();
+
+        if (!frontier_have_more_gpu())
+            break;
+    }
+
+    pred_from_gpu();
+}
+
 void bfs_gpu(int64_t root) {
     if (rank == root_owner) {
 #ifdef SHOWDEBUG
@@ -149,7 +170,6 @@ void bfs_gpu(int64_t root) {
     }
 
     SET_GLOBAL(root, frontier);
-
     pred_to_gpu();
 
     while (1) {
@@ -174,7 +194,11 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 
     root_owner = VERTEX_OWNER(root);
 
+#ifndef CUDA_OMPI
     bfs_gpu(root);
+#else
+    bfs_gpu_cuda_ompi(root);
+#endif
     return ;
 
 #ifdef SHOWTIMER

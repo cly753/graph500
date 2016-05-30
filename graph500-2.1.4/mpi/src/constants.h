@@ -14,5 +14,8 @@
 
 #define DOPRINT
 
+#define PURE_GPU
+#define CUDA_OMPI
+
 
 #endif //MPI_CONSTANTS_H

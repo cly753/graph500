@@ -118,18 +118,6 @@ void show_csr() {
     }
 }
 
-//void show_csc() {
-//    int i;
-//    for (i = 0; i < g.nlocalverts; i++) {
-//        int j;
-//        PRINT_RANK("csc: %d - ", VERTEX_TO_GLOBAL(rank, i))
-//        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
-//            PRINT(" [%d]%d", j, g.column[j])
-//        }
-//        PRINTLN("")
-//    }
-//}
-
 void filter_duplicate_edge() {
     int64_t *exist = xmalloc(global_long_nb);
     int new_j = 0;
@@ -188,14 +176,6 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 
     convert_graph_to_oned_csr(tg, &g);
 
-//    tuple_graph* tg2 = xmalloc(sizeof(tuple_graph));
-//    tg2 = tg;
-//    tg2->edgememory = xmalloc(tg->edgememory_size);
-//    memcpy(tg2->edgememory, tg->edgememory, tg->edgememory_size);
-//    convert_graph_to_oned_csc(tg2, &g_csc);
-//    PRINTLN_RANK("converted, showing csc ...")
-//    show_csc();
-
     local_long_n = (g.nlocalverts + LONG_BITS - 1) / LONG_BITS;
     local_long_nb = local_long_n * sizeof(unsigned long);
     global_long_n = (g.nglobalverts + LONG_BITS - 1) / LONG_BITS;
@@ -213,13 +193,14 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     count_duplicate_edge();
 #endif
 
-//    csr_to_in_edge();
-//#ifdef SHOWDEBUG
-//    show_in_edge();
-//#endif
+#ifndef PURE_GPU
+   csr_to_in_edge();
+#ifdef SHOWDEBUG
+   show_in_edge();
+#endif
+#endif
 
     init_bottom_up_gpu();
-
 }
 
 void free_graph_data_structure(void) {

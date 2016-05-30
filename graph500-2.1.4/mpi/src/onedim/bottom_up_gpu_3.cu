@@ -152,19 +152,15 @@ __global__ void do_nothing(
 		int to_global = column_g[i];
 		if (TEST_GLOBAL_G(to_global, frontier_g)) {
 			pred_g[from] = to_global;
-			// pred_g[from] = 999;
 			SET_GLOBAL_ATOMIC_G(VERTEX_TO_GLOBAL_G(rank_g, from), frontier_next_g);
 		}
 	}
 }
 
 int64_t *rowstarts_g;
-int size_rowstarts;
 int64_t *column_g;
-int size_column;
 
 int64_t *row_g;
-int size_row;
 
 int64_t *pred_g;
 int size_pred_g;
@@ -175,28 +171,27 @@ int64_t *frontier_next_g;
 int size_frontier_next_g;
 
 
+// use CPU to fill?
 __global__ void fill_row_g(int64_t *rowstarts_g, int64_t *row_g, int nlocalverts) {
 	const int block_base = blockIdx.x * blockDim.x;
 	const int i = block_base + threadIdx.x;
 	if (i >= nlocalverts)
 		return ;
-	int j;
-	for (j = rowstarts_g[i]; j < rowstarts_g[i + 1]; j++) {
+	for (int j = rowstarts_g[i]; j < rowstarts_g[i + 1]; j++)
 		row_g[j] = i;
-	}
 }
 
 // transfer graph to gpu global memory
 // should perform only once
 void init_bottom_up_gpu() {
-	size_rowstarts = (g.nlocalverts + 1) * sizeof(int64_t);
-	size_column = g.rowstarts[g.nlocalverts] * sizeof(int64_t);
+	int size_rowstarts = (g.nlocalverts + 1) * sizeof(int64_t);
+	int size_column = g.rowstarts[g.nlocalverts] * sizeof(int64_t);
 	cudaMalloc((void **)&rowstarts_g, size_rowstarts);
 	cudaMalloc((void **)&column_g, size_column);
 	cudaMemcpy(rowstarts_g, g.rowstarts, size_rowstarts, cudaMemcpyHostToDevice);
 	cudaMemcpy(column_g, g.column, size_column, cudaMemcpyHostToDevice);
 
-	size_row = size_column;
+	int size_row = size_column;
 	cudaMalloc((void **)&row_g, size_row);
 	fill_row_g<<<(g.nlocalverts + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts);
 
@@ -214,8 +209,17 @@ void init_bottom_up_gpu() {
 	cudaMalloc((void **)&frontier_next_g, size_frontier_next_g);
 }
 
+// no need to use if cuda ompi
 void pred_to_gpu() {
 	cudaMemcpy(pred_g, pred, size_pred_g, cudaMemcpyHostToDevice);
+}
+
+// use this if cuda ompi
+void init_pred_gpu(int root) {
+	// allocate and set root
+	// cudaMemset
+
+	// TODO
 }
 
 void pred_from_gpu() {
@@ -233,8 +237,10 @@ void end_bottom_up_gpu() {
 }
 
 void one_step_bottom_up_gpu() {
+#ifndef CUDA_OMPI
 	// transfer current frontier to gpu
 	cudaMemcpy(frontier_g, frontier, size_frontier_g, cudaMemcpyHostToDevice);
+#endif
 	cudaMemset(frontier_next_g, 0, size_frontier_next_g);
 
 	// get suitable dim
@@ -247,5 +253,7 @@ void one_step_bottom_up_gpu() {
 	Context context = { rank, size, lgsize, g.nlocalverts };
 	do_nothing<<<dimGrid, dimBlock>>>(row_g, column_g, frontier_g, frontier_next_g, pred_g, g.rowstarts[g.nlocalverts], context);
 
+#ifndef CUDA_OMPI
 	cudaMemcpy(frontier_next, frontier_next_g, size_frontier_next_g, cudaMemcpyDeviceToHost);
+#endif
 }
