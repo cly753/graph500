@@ -16,6 +16,7 @@ extern "C" {
 
 #include "constants.h"
 #include "bfs.h"
+#include "frontier_tracker.h"
 #include "print.h"
 
 // includes CUDA
@@ -72,8 +73,6 @@ __device__ void set_context(Context context) {
 // 	return mul_size((uint64_t)v) + rank;
 // }
 
-#define LONG_BITS_G 64
-
 // __device__ void set_local(int64_t v, int64_t *a) { // x / 64 --> x >> 6 ??
 // 	a[vertex_local(v) / LONG_BITS_G] |= (1UL << (vertex_local(v) % LONG_BITS_G));
 // }
@@ -94,24 +93,6 @@ __device__ void set_context(Context context) {
 // 	return 0 != (a[v / LONG_BITS_G] & (1UL << (v % LONG_BITS_G)));
 // }
 
-#define MOD_SIZE_G(v) ((v) & ((1 << lgsize_g) - 1))
-#define DIV_SIZE_G(v) ((v) >> lgsize_g)
-#define MUL_SIZE_G(x) ((x) << lgsize_g)
-
-#define VERTEX_OWNER_G(v) ((int)(MOD_SIZE_G(v)))
-#define VERTEX_LOCAL_G(v) ((size_t)(DIV_SIZE_G(v)))
-#define VERTEX_TO_GLOBAL_G(r, i) ((int64_t)(MUL_SIZE_G((uint64_t)i) + (int)(r)))
-
-// #define LONG_BITS_G (sizeof(unsigned long) * CHAR_BIT)
-#define LONG_BITS_G 64
-
-#define SET_LOCAL_G(v, a) do {(a)[VERTEX_LOCAL_G((v)) / LONG_BITS_G] |= (1UL << (VERTEX_LOCAL_G((v)) % LONG_BITS_G));} while (0)
-#define TEST_LOCA_G(v, a) (((a)[VERTEX_LOCAL_G((v)) / LONG_BITS_G] & (1UL << (VERTEX_LOCAL_G((v)) % LONG_BITS_G))) != 0)
-
-#define SET_GLOBAL_G(v, a) do {(a)[(v) / LONG_BITS_G] |= (1UL << ((v) % LONG_BITS_G));} while (0)
-#define SET_GLOBAL_ATOMIC_G(v, a) do {atomicOr((unsigned long long int*)(&(a)[(v) / LONG_BITS_G]), 1UL << ((v) % LONG_BITS_G));} while (0)
-#define TEST_GLOBAL_G(v, a) (((a)[(v) / LONG_BITS_G] & (1UL << ((v) % LONG_BITS_G))) != 0)
-
 
 extern oned_csr_graph g;
 extern int64_t *pred;
@@ -125,11 +106,15 @@ extern int64_t *frontier_next;
 // for bottom up
 // one thread do one vertex
 // one thread try to find parent in its all neighbour
+
+// get dim for bfs kernel
 void dim_do_nothing(dim3* dimGrid, dim3 *dimBlock) {
 	*dimGrid = dim3((g.rowstarts[g.nlocalverts] + BLOCK_X - 1) / BLOCK_X, 1, 1); // number of block
 	*dimBlock = dim3(BLOCK_X, 1, 1); // number of thread per block
 }
 
+// bfs kernel
+// each thread do one edge
 __global__ void do_nothing(
 	int64_t *row_g, 
 	int64_t *column_g, 
@@ -142,15 +127,15 @@ __global__ void do_nothing(
 	set_context(context);
 
 	const int block_base = blockIdx.x * blockDim.x;
-	const int i = block_base + threadIdx.x;
+	const int i = block_base + threadIdx.x; // this thread do i-th edge
 
 	if (i >= total_edge)
 		return ;
 
-	int from = row_g[i];
-	if (pred_g[from] == -1) {
-		int to_global = column_g[i];
-		if (TEST_GLOBAL_G(to_global, frontier_g)) {
+	int from = row_g[i]; // one end of the edge
+	if (pred_g[from] == -1) { // bottom up, so check if from is unvisited
+		int to_global = column_g[i]; // the other end of the edge
+		if (TEST_GLOBAL_G(to_global, frontier_g)) { // check if is in frontier
 			pred_g[from] = to_global;
 			SET_GLOBAL_ATOMIC_G(VERTEX_TO_GLOBAL_G(rank_g, from), frontier_next_g);
 		}
@@ -158,9 +143,12 @@ __global__ void do_nothing(
 }
 
 int64_t *rowstarts_g;
+int size_rowstarts;
 int64_t *column_g;
+int size_column;
 
 int64_t *row_g;
+int size_row;
 
 int64_t *pred_g;
 int size_pred_g;
@@ -170,6 +158,43 @@ int size_frontier_g;
 int64_t *frontier_next_g;
 int size_frontier_next_g;
 
+void show_pred_g() {
+	int64_t *pred_copy = (int64_t *)xmalloc(size_pred_g);
+	cudaMemcpy(pred_copy, pred_g, size_pred_g, cudaMemcpyDeviceToHost);
+
+    PRINT_RANK("gpu index:")
+    for (int i = 0; i < g.nlocalverts; i++) {
+        PRINT(" %"PRId64"", (i * size + rank))
+    }
+    PRINTLN("")
+    PRINT_RANK("gpu pred :")
+    for (int i = 0; i < g.nlocalverts; i++) {
+        PRINT(" %"PRId64"", pred_copy[i])
+    }
+    PRINTLN("")
+
+    free(pred_copy);
+}
+
+void read_frontier_next_g() {
+	cudaMemcpy(frontier_next, frontier_next_g, global_long_nb, cudaMemcpyDeviceToHost);
+}
+
+void save_frontier_g() {
+	cudaMemcpy(frontier_g, frontier, global_long_nb, cudaMemcpyHostToDevice);
+}
+
+int64_t* get_frontier_g() {
+	int64_t *frontier_g_copy = (int64_t *)xmalloc(global_long_nb);
+	cudaMemcpy(frontier_g_copy, frontier_g, global_long_nb, cudaMemcpyDeviceToHost);	
+	return frontier_g_copy;
+}
+
+int64_t* get_frontier_next_g() {
+	int64_t *frontier_next_g_copy = (int64_t *)xmalloc(global_long_nb);
+	cudaMemcpy(frontier_next_g_copy, frontier_next_g, global_long_nb, cudaMemcpyDeviceToHost);
+	return frontier_next_g_copy;
+}
 
 // use CPU to fill?
 __global__ void fill_row_g(int64_t *rowstarts_g, int64_t *row_g, int nlocalverts) {
@@ -184,14 +209,14 @@ __global__ void fill_row_g(int64_t *rowstarts_g, int64_t *row_g, int nlocalverts
 // transfer graph to gpu global memory
 // should perform only once
 void init_bottom_up_gpu() {
-	int size_rowstarts = (g.nlocalverts + 1) * sizeof(int64_t);
-	int size_column = g.rowstarts[g.nlocalverts] * sizeof(int64_t);
+	size_rowstarts = (g.nlocalverts + 1) * sizeof(int64_t);
+	size_column = g.rowstarts[g.nlocalverts] * sizeof(int64_t);
 	cudaMalloc((void **)&rowstarts_g, size_rowstarts);
 	cudaMalloc((void **)&column_g, size_column);
 	cudaMemcpy(rowstarts_g, g.rowstarts, size_rowstarts, cudaMemcpyHostToDevice);
 	cudaMemcpy(column_g, g.column, size_column, cudaMemcpyHostToDevice);
 
-	int size_row = size_column;
+	size_row = size_column;
 	cudaMalloc((void **)&row_g, size_row);
 	fill_row_g<<<(g.nlocalverts + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts);
 
@@ -205,6 +230,7 @@ void init_bottom_up_gpu() {
 
 	size_frontier_g = global_long_nb;
 	cudaMalloc((void **)&frontier_g, size_frontier_g);
+	cudaMemset(frontier_g, 0, size_frontier_g);
 	size_frontier_next_g = global_long_nb;
 	cudaMalloc((void **)&frontier_next_g, size_frontier_next_g);
 }
@@ -215,11 +241,15 @@ void pred_to_gpu() {
 }
 
 // use this if cuda ompi
-void init_pred_gpu(int root) {
-	// allocate and set root
-	// cudaMemset
-
-	// TODO
+void init_pred_gpu(int64_t root, int is_root_owner) {
+	cudaMemset(pred_g, -1, size_pred_g);
+	if (is_root_owner) {
+		// http://stackoverflow.com/questions/7464015/cuda-change-single-value-in-array
+		cudaMemcpy(pred_g + VERTEX_LOCAL(root), &root, sizeof(int64_t), cudaMemcpyHostToDevice); 
+	}
+#ifdef SHOWDEBUG
+	show_pred_g();
+#endif
 }
 
 void pred_from_gpu() {
@@ -237,10 +267,6 @@ void end_bottom_up_gpu() {
 }
 
 void one_step_bottom_up_gpu() {
-#ifndef CUDA_OMPI
-	// transfer current frontier to gpu
-	cudaMemcpy(frontier_g, frontier, size_frontier_g, cudaMemcpyHostToDevice);
-#endif
 	cudaMemset(frontier_next_g, 0, size_frontier_next_g);
 
 	// get suitable dim
@@ -252,8 +278,52 @@ void one_step_bottom_up_gpu() {
 	// it should compute frontier_next_g
 	Context context = { rank, size, lgsize, g.nlocalverts };
 	do_nothing<<<dimGrid, dimBlock>>>(row_g, column_g, frontier_g, frontier_next_g, pred_g, g.rowstarts[g.nlocalverts], context);
-
-#ifndef CUDA_OMPI
-	cudaMemcpy(frontier_next, frontier_next_g, size_frontier_next_g, cudaMemcpyDeviceToHost);
+#ifdef SHOWDEBUG
+	show_pred_g();
 #endif
+}
+
+void set_frontier_gpu(int64_t v) {
+	// http://stackoverflow.com/questions/7464015/cuda-change-single-value-in-array
+	int the_long = v / LONG_BITS_G;
+	int64_t val = 1UL << (v % LONG_BITS_G);
+	cudaMemcpy(frontier_g + the_long, &val, sizeof(int64_t), cudaMemcpyHostToDevice); 
+}
+
+__device__ int have_more_g;
+
+__global__ void check_have_more(int64_t *frontier_g, int global_long_n) {
+	const int block_base = blockIdx.x * blockDim.x;
+	const int i = block_base + threadIdx.x;
+	if (i >= global_long_n)
+		return ;
+
+	__shared__ int hm;
+	hm = 0;
+	__syncthreads();
+	if (frontier_g[i])
+		hm = 1;
+	__syncthreads();
+	if (threadIdx.x == 0 && hm)
+		have_more_g = 1;
+}
+
+// __global__ void reset_have_more_g() {
+// 	have_more_g = 0;
+// }
+
+#define HAVE_MORE_BLOCK_SIZE 64
+
+// gpu version of checking if frontier is empty
+// so check if all frontier int64_t is 0 or not
+int frontier_have_more_gpu() {
+	int have_more = 0;
+
+	int grid_size = (global_long_n + HAVE_MORE_BLOCK_SIZE - 1) / HAVE_MORE_BLOCK_SIZE;
+	// reset_have_more_g<<<1, 1>>>();
+	cudaMemcpyToSymbol(have_more_g, &have_more, sizeof(int), 0, cudaMemcpyHostToDevice);
+	check_have_more<<<grid_size, HAVE_MORE_BLOCK_SIZE>>>(frontier_g, global_long_n);
+
+	cudaMemcpyFromSymbol(&have_more, have_more_g, sizeof(int), 0, cudaMemcpyDeviceToHost);
+	return have_more;
 }

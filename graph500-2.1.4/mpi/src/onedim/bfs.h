@@ -38,6 +38,8 @@ size_t local_long_nb;
 int global_long_n;
 size_t global_long_nb;
 
+int have_cuda_aware_support;
+
 //unsigned long *g_cur;
 //unsigned long *g_next;
 

@@ -72,3 +72,7 @@ graph500_mpi_onedim: $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES) $(SOURCES_ONEDIM
 
 clean:
 	-rm -f graph500_mpi_* *.o *.a
+
+
+# run command 
+# /opt/openmpi-gcc/bin/mpirun -mca orte_base_help_aggregate 0 --allow-run-as-root -np 2 -x LD_LIBRARY_PATH ./run_g500.sh 3 1

@@ -6,22 +6,11 @@
 int64_t *frontier;
 int64_t *frontier_next;
 
-
-extern int64_t *frontier_g; // pointer to memory in GPU
-extern int64_t *frontier_next_g; // pointer to memory in GPU
-
-void init_frontier();
-
-void sync_frontier();
-
-int frontier_have_more();
-
-
-
-void set_frontier_gpu(int v);
+extern int64_t *frontier_g; // point to memory in GPU
+extern int64_t *frontier_next_g; // point to memory in GPU
 
 void sync_frontier_gpu();
 
-int frontier_have_more_gpu();
+void sync_frontier_work_around();
 
 #endif //MPI_FRONTIER_TRACKER_H

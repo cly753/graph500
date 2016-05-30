@@ -40,76 +40,48 @@ void show_global(int64_t *a) {
     PRINTLN("")
 }
 
+void show_frontier() {
+    PRINT_RANK("frontier_g     : ")
+    int64_t *frontier_g_copy = get_frontier_g();
+    show_global(frontier_g_copy);
+    free(frontier_g_copy);
+    PRINT_RANK("frontier_next_g: ")
+    int64_t *frontier_next_g_copy = get_frontier_next_g();
+    show_global(frontier_next_g_copy);
+    free(frontier_next_g_copy);
+}
+
 void show_pred() {
+    // int i;
+    // PRINT_RANK("cpu index:")
+    // for (i = 0; i < g.nlocalverts; i++) {
+    //     PRINT(" %2d", (int) VERTEX_TO_GLOBAL(rank, i))
+    // }
+    // PRINTLN("")
+    // PRINT_RANK("cpu pred :")
+    // for (i = 0; i < g.nlocalverts; i++) {
+    //     PRINT(" %2d", (int) pred[i])
+    // }
+    // PRINTLN("")
+    
     int i;
-    PRINT_RANK("index:")
+    PRINT_RANK("cpu index:")
     for (i = 0; i < g.nlocalverts; i++) {
-        PRINT(" %2d", (int) VERTEX_TO_GLOBAL(rank, i))
+        PRINT(" %"PRId64"", VERTEX_TO_GLOBAL(rank, i))
     }
     PRINTLN("")
-    PRINT_RANK("pred :")
+    PRINT_RANK("cpu pred :")
     for (i = 0; i < g.nlocalverts; i++) {
-        PRINT(" %2d", (int) pred[i])
+        PRINT(" %"PRId64"", pred[i])
     }
     PRINTLN("")
 }
 
 extern int64_t *in_edge_start;
 extern int64_t *in_edge_to;
-int now_top_down;
-int nth_call;
-const int cutoff_to_bottom_up = 2; // first topdown->bottomup switch
-const int cutoff_to_top_down = 4; // first bottomup->topdown switch
-const float alpha = 0.2;
-const float beta = 10;
-int top_down_better() {
-    // so good!
-    if (nth_call > cutoff_to_top_down)
-        return 0;
-    if (nth_call++ < cutoff_to_bottom_up)
-        return 1;
-    return 0;
-
-    // cann't see benefit, need more test
-    int nf = 0;
-    int i;
-    for (i = 0; i < global_long_n; i++)
-        nf += __builtin_popcountll(frontier[i]);
-    return nf < g.nglobalverts / beta;
-
-    // too slow
-    if (now_top_down) {
-        int64_t mf = 0; // number of edges connecting frontier nodes
-        int i;
-        for (i = 0; i < g.nglobalverts; i++) {
-            if (TEST_GLOBAL(i, frontier)) {
-                mf += in_edge_start[i + 1] - in_edge_start[i];
-            }
-        }
-
-        int64_t mu = 0; // number of edges connecting unvisited nodes
-        for (i = 0; i < g.nlocalverts; i++) {
-            if (pred[i] == -1) {
-                mu += g.rowstarts[i + 1] - g.rowstarts[i];
-            }
-        }
-
-        return mf < mu / alpha;
-    }
-    else {
-        int nf = 0;
-        int i;
-        for (i = 0; i < global_long_n; i++)
-            nf += __builtin_popcountll(frontier[i]);
-        return nf < g.nglobalverts / beta;
-    }
-}
 
 void init() {
     memset(pred, -1, g.nlocalverts * sizeof(int64_t));
-
-    now_top_down = 1;
-    nth_call = 0;
 }
 
 void wrap_up() {
@@ -121,12 +93,15 @@ void wrap_up() {
     }
 #endif
 
-    int64_t visit_node = 0;
-    int i;
-    for (i = 0; i < g.nlocalverts; i++)
-        if (pred[i] != -1)
-            visit_node++;
+    // int visit_node = 0;
+    // int i;
+    // for (i = 0; i < g.nlocalverts; i++) {
+    //     if (pred[i] != -1) {
+    //         visit_node += g.rowstarts[i + 1] - g.rowstarts[i];
+    //     }
+    // }
 
+    // PRINTLN_RANK("visit_node=%d", visit_node)
 //    int64_t total_visit[1];
 //    MPI_Reduce(
 //        visit_node, // void* send_data,
@@ -140,47 +115,70 @@ void wrap_up() {
 //        PRINTLN_RANK("total visit: %d", &total_visit);
 }
 
-void bfs_gpu_cuda_ompi(int64_t root) {
-    if (rank == root_owner) {
-#ifdef SHOWDEBUG
-        PRINTLN("rank %02d: root: %d", rank, (int)root)
-#endif
-        init_pred_gpu(root);
+void show_frontier_ordered() {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0) {
+        show_frontier();
+        MPI_Barrier(MPI_COMM_WORLD);
+        PRINTLN_RANK("frontier_have_more_gpu: %d", frontier_have_more_gpu())
     }
-    set_frontier_gpu(root);
-
-    while (1) {
-        one_step_bottom_up_gpu();
-
-        sync_frontier_gpu();
-
-        if (!frontier_have_more_gpu())
-            break;
+    else {
+        MPI_Barrier(MPI_COMM_WORLD);
+        show_frontier();
+        PRINTLN_RANK("frontier_have_more_gpu: %d", frontier_have_more_gpu())
     }
-
-    pred_from_gpu();
+    MPI_Barrier(MPI_COMM_WORLD);
 }
 
-void bfs_gpu(int64_t root) {
+void check_cuda_aware_support() {
+//     printf("Compile time check:\n");
+// #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+//     printf("This MPI library has CUDA-aware support.\n", MPIX_CUDA_AWARE_SUPPORT);
+// #elif defined(MPIX_CUDA_AWARE_SUPPORT) && !MPIX_CUDA_AWARE_SUPPORT
+//     printf("This MPI library does not have CUDA-aware support.\n");
+// #else
+//     printf("This MPI library cannot determine if there is CUDA-aware support.\n");
+// #endif /* MPIX_CUDA_AWARE_SUPPORT */
+ 
+    printf("Run time check:\n");
+#if defined(MPIX_CUDA_AWARE_SUPPORT)
+    if (1 == MPIX_Query_cuda_support()) {
+        have_cuda_aware_support = 1;
+        printf("This MPI library has CUDA-aware support.\n");
+    } else {
+        have_cuda_aware_support = 0;
+        printf("This MPI library does not have CUDA-aware support.\n");
+    }
+#else /* !defined(MPIX_CUDA_AWARE_SUPPORT) */
+    have_cuda_aware_support = 0;
+    printf("This MPI library cannot determine if there is CUDA-aware support.\n");
+#endif /* MPIX_CUDA_AWARE_SUPPORT */
+}
+
+void bfs_gpu_cuda_ompi(int64_t root) {
+    check_cuda_aware_support();
+    if (!have_cuda_aware_support)
+        init_frontier();
+
     if (rank == root_owner) {
 #ifdef SHOWDEBUG
         PRINTLN("rank %02d: root: %d", rank, (int)root)
 #endif
-        pred[VERTEX_LOCAL(root)] = root;
     }
 
-    SET_GLOBAL(root, frontier);
-    pred_to_gpu();
-
+    init_pred_gpu(root, rank == root_owner);
+    set_frontier_gpu(root);
     while (1) {
         one_step_bottom_up_gpu();
-#ifdef SHOWDEBUG
-        show_pred();
-#endif
-
-        sync_frontier();
-
-        if (!frontier_have_more())
+        if (have_cuda_aware_support)
+            sync_frontier_gpu();
+        else {
+            read_frontier_next_g();
+            sync_frontier_work_around();
+            save_frontier_g();
+        }
+    
+        if (!frontier_have_more_gpu())
             break;
     }
 
@@ -189,63 +187,9 @@ void bfs_gpu(int64_t root) {
 
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     pred = predpred;
-    init();
-    init_frontier();
-
     root_owner = VERTEX_OWNER(root);
 
-#ifndef CUDA_OMPI
-    bfs_gpu(root);
-#else
     bfs_gpu_cuda_ompi(root);
-#endif
-    return ;
-
-#ifdef SHOWTIMER
-    double level_start = 0;
-    double level_stop = 0;
-#endif
-
-    if (rank == root_owner) {
-#ifdef SHOWDEBUG
-        PRINTLN_RANK("root: %d", rank, (int)root)
-#endif
-        pred[VERTEX_LOCAL(root)] = root;
-    }
-
-    SET_GLOBAL(root, frontier);
-
-    while (1) {
-#ifdef SHOWTIMER
-        if (rank == root_owner)
-            level_start = MPI_Wtime();
-#endif
-
-        if (top_down_better()) {
-            TIME_IT(one_step_top_down(), &time_temp)
-        }
-        else {
-            TIME_IT(one_step_bottom_up(), &time_temp)
-        }
-        time_comp += time_temp;
-
-#ifdef SHOWDEBUG
-        show_pred();
-#endif
-
-        TIME_IT(sync_frontier(), &time_temp)
-        time_comm += time_temp;
-
-        if (!frontier_have_more())
-            break;
-
-#ifdef SHOWTIMER
-        if (rank == root_owner) {
-            level_stop = MPI_Wtime();
-            PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
-        }
-#endif
-    }
 
     wrap_up();
 }

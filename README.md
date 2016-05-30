@@ -34,6 +34,31 @@
 
 - ~~~ TBD
 
+#### Version z
+
+- Level-synchronized top-down + bottom-up BFS.
+- Use CSR and construct CSC-like array.
+- Bitmap tracking global frontier.
+- Filter duplicated edges.
+
+##### Profiling
+
+- ~~~ TBD
+
+#### Version pure-gpu (current)
+
+- Level-synchronized bottom-up BFS.
+- Use CSR and recover whole edge array.
+- Bitmap tracking global frontier.
+- Filter duplicated edges.
+- All computations are done in GPU.
+- Each GPU thread process one edge.
+- If cuda-aware support is available, should be much faster.
+
+##### Profiling
+
+- ~~~ TBD
+
 ### Code
 
 Implementation goes in `graph500-2.1.4\mpi\src`.
