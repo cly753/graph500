@@ -16,10 +16,6 @@ extern int64_t *parent_cur;
 
 int root_owner;
 
-double time_comm;
-double time_comp;
-double time_temp;
-
 void show_local(int64_t *a) {
     int i;
     char s[65];
@@ -174,12 +170,13 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 
     root_owner = VERTEX_OWNER(root);
 
-    bfs_gpu(root);
-    return ;
+    // bfs_gpu(root);
+    // return ;
 
 #ifdef SHOWTIMER
-    double level_start = 0;
-    double level_stop = 0;
+    double t_start = 0;
+    double t_stop = 0;
+    double t_total = 0;
 #endif
 
     if (rank == root_owner) {
@@ -192,36 +189,38 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     SET_GLOBAL(root, frontier);
 
     while (1) {
-#ifdef SHOWTIMER
-        if (rank == root_owner)
-            level_start = MPI_Wtime();
-#endif
-
         if (top_down_better()) {
-            TIME_IT(one_step_top_down(), &time_temp)
+            one_step_top_down();
         }
         else {
-            TIME_IT(one_step_bottom_up(), &time_temp)
+            one_step_bottom_up();
         }
-        time_comp += time_temp;
 
 #ifdef SHOWDEBUG
         show_pred();
 #endif
 
-        TIME_IT(sync_frontier(), &time_temp)
-        time_comm += time_temp;
-
-        if (!frontier_have_more())
-            break;
+#ifdef SHOWTIMER
+        if (rank == root_owner)
+            t_start = MPI_Wtime();
+#endif
+        sync_frontier();
 
 #ifdef SHOWTIMER
         if (rank == root_owner) {
-            level_stop = MPI_Wtime();
-            PRINTLN("[TIMER] %.6lfs", level_stop - level_start);
+            t_stop = MPI_Wtime();
+            t_total += t_stop - t_start;
         }
 #endif
+
+        if (!frontier_have_more())
+            break;
     }
+
+#ifdef SHOWTIMER
+    if (rank == root_owner)
+        PRINTLN("[TIMER] time for communication: %.6lfs", t_total);
+#endif
 
     wrap_up();
 }

@@ -10,7 +10,7 @@
 #define FILER_EDGE
 
 // #define SHOWDEBUG
-//#define SHOWTIMER
+#define SHOWTIMER
 
 #define DOPRINT
 
