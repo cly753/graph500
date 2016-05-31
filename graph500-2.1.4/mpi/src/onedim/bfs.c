@@ -193,7 +193,7 @@ void bfs_gpu_cuda_ompi(int64_t root) {
 #ifdef SHOWTIMER
         if (rank == root_owner) {
             t_stop = MPI_Wtime();
-            t_total += t_stop - t_start;
+            t_total = t_stop - t_start;
         }
 #endif
 
