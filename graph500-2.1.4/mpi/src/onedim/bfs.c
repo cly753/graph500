@@ -175,7 +175,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 #ifdef SHOWTIMER
         if (rank == root_owner) {
             t_stop = MPI_Wtime();
-            t_total += t_stop - t_start;
+            t_total = t_stop - t_start;
         }
 #endif
 
