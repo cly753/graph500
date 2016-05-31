@@ -176,6 +176,11 @@ void bfs_gpu_cuda_ompi(int64_t root) {
 
         one_step_bottom_up_gpu();
 
+#ifdef SHOWTIMER
+        double s_start;
+        if (rank == root_owner) s_start = MPI_Wtime();
+#endif
+
         if (have_cuda_aware_support) {
             sync_frontier_gpu();
         }
@@ -188,6 +193,16 @@ void bfs_gpu_cuda_ompi(int64_t root) {
             save_frontier_g();
 
         }
+
+#ifdef SHOWTIMER
+        double s_stop;
+        if (rank == root_owner) s_stop = MPI_Wtime();
+#endif
+
+#ifdef SHOWTIMER
+        if (rank == root_owner)
+            PRINTLN("[TIMER] time for comm : %.6lfs", s_stop - s_start);
+#endif
 
 #ifdef SHOWTIMER
         if (rank == root_owner) {
