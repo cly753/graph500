@@ -203,7 +203,22 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         show_pred();
 #endif
 
+#ifdef SHOWTIMER
+        double s_start;
+        if (rank == root_owner) s_start = MPI_Wtime();
+#endif
+
         sync_frontier();
+
+#ifdef SHOWTIMER
+        double s_stop;
+        if (rank == root_owner) s_stop = MPI_Wtime();
+#endif
+
+#ifdef SHOWTIMER
+        if (rank == root_owner)
+            PRINTLN("[TIMER] time for comm : %.6lfs", s_stop - s_start);
+#endif
 
 #ifdef SHOWTIMER
         if (rank == root_owner) {
