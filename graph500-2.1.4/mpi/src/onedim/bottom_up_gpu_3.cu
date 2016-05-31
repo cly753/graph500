@@ -206,6 +206,31 @@ __global__ void fill_row_g(int64_t *rowstarts_g, int64_t *row_g, int nlocalverts
 		row_g[j] = i;
 }
 
+__global__ void fill_row_g_binary(int64_t *rowstarts_g, int64_t *row_g, int nlocalverts, int64_t total_edge) {
+	const int block_base = blockIdx.x * blockDim.x;
+	const int i = block_base + threadIdx.x;
+	if (i >= total_edge)
+		return ;
+	int l = 0;
+	int r = nlocalverts;
+	// int r = i;
+	while (1) {
+		int m = (l + r) / 2;
+		int a = rowstarts_g[m];
+		int b = rowstarts_g[m + 1];
+		if (a <= i && i < b) {
+			row_g[i] = m;
+			break;
+		}
+		else if (b <= i) {
+			l = m + 1;
+		}
+		else {
+			r = m;
+		}
+	}
+}
+
 // transfer graph to gpu global memory
 // should perform only once
 void init_bottom_up_gpu() {
@@ -218,7 +243,8 @@ void init_bottom_up_gpu() {
 
 	size_row = size_column;
 	cudaMalloc((void **)&row_g, size_row);
-	fill_row_g<<<(g.nlocalverts + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts);
+	// fill_row_g<<<(g.nlocalverts + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts);
+	fill_row_g_binary<<<(g.rowstarts[g.nlocalverts] + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts, g.rowstarts[g.nlocalverts]);
 
 	// here assume pred always reside in GPU
 	// from beginning to end
