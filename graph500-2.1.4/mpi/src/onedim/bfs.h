@@ -47,6 +47,8 @@ void show_local(int64_t *a);
 
 void show_global(int64_t *a);
 
+void check_cuda_aware_support();
+
 void bfs(oned_csr_graph* g, int64_t root, int64_t* pred);
 
 #endif // BFS_H

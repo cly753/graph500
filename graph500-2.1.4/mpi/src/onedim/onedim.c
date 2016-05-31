@@ -201,6 +201,8 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 #endif
 
     init_bottom_up_gpu();
+
+    check_cuda_aware_support();
 }
 
 void free_graph_data_structure(void) {

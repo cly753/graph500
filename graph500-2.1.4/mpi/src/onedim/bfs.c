@@ -151,7 +151,6 @@ void check_cuda_aware_support() {
 }
 
 void bfs_gpu_cuda_ompi(int64_t root) {
-    check_cuda_aware_support();
     if (!have_cuda_aware_support)
         init_frontier();
 
