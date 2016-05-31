@@ -83,6 +83,7 @@ const int cutoff_to_top_down = 4; // first bottomup->topdown switch
 const float alpha = 0.2;
 const float beta = 10;
 int get_strategy() {
+    // return USE_GPU;
     int strategy = -1;
     switch (nth_call) {
     case 0 ... 1: // inclusive
@@ -100,39 +101,39 @@ int get_strategy() {
     nth_call++;
     return strategy;
 
-    // cann't see benefit, need more test
-    int nf = 0;
-    int i;
-    for (i = 0; i < global_long_n; i++)
-        nf += __builtin_popcountll(frontier[i]);
-    return nf < g.nglobalverts / beta;
+    // // cann't see benefit, need more test
+    // int nf = 0;
+    // int i;
+    // for (i = 0; i < global_long_n; i++)
+    //     nf += __builtin_popcountll(frontier[i]);
+    // return nf < g.nglobalverts / beta;
 
-    // too slow
-    if (now_top_down) {
-        int64_t mf = 0; // number of edges connecting frontier nodes
-        int i;
-        for (i = 0; i < g.nglobalverts; i++) {
-            if (TEST_GLOBAL(i, frontier)) {
-                mf += in_edge_start[i + 1] - in_edge_start[i];
-            }
-        }
+    // // too slow
+    // if (now_top_down) {
+    //     int64_t mf = 0; // number of edges connecting frontier nodes
+    //     int i;
+    //     for (i = 0; i < g.nglobalverts; i++) {
+    //         if (TEST_GLOBAL(i, frontier)) {
+    //             mf += in_edge_start[i + 1] - in_edge_start[i];
+    //         }
+    //     }
 
-        int64_t mu = 0; // number of edges connecting unvisited nodes
-        for (i = 0; i < g.nlocalverts; i++) {
-            if (pred[i] == -1) {
-                mu += g.rowstarts[i + 1] - g.rowstarts[i];
-            }
-        }
+    //     int64_t mu = 0; // number of edges connecting unvisited nodes
+    //     for (i = 0; i < g.nlocalverts; i++) {
+    //         if (pred[i] == -1) {
+    //             mu += g.rowstarts[i + 1] - g.rowstarts[i];
+    //         }
+    //     }
 
-        return mf < mu / alpha;
-    }
-    else {
-        int nf = 0;
-        int i;
-        for (i = 0; i < global_long_n; i++)
-            nf += __builtin_popcountll(frontier[i]);
-        return nf < g.nglobalverts / beta;
-    }
+    //     return mf < mu / alpha;
+    // }
+    // else {
+    //     int nf = 0;
+    //     int i;
+    //     for (i = 0; i < global_long_n; i++)
+    //         nf += __builtin_popcountll(frontier[i]);
+    //     return nf < g.nglobalverts / beta;
+    // }
 }
 
 void init() {
@@ -174,7 +175,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 #endif
         pred[VERTEX_LOCAL(root)] = root;
     }
-
+    // pred_to_gpu(); // ...
     SET_GLOBAL(root, frontier);
 
     while (1) {
@@ -223,7 +224,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         if (!frontier_have_more())
             break;
     }
-
+    // pred_from_gpu(); // ...
     wrap_up();
 }
 

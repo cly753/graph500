@@ -231,9 +231,21 @@ __global__ void fill_row_g_binary(int64_t *rowstarts_g, int64_t *row_g, int nloc
 	}
 }
 
+__global__ void warm_up() {}
+
+void warm_up_device() {
+	int n_device;
+	cudaGetDeviceCount(&n_device);
+	for (int i = 0; i < n_device; i++)
+		cudaSetDevice(i);
+	warm_up<<<dim3(32, 32, 1), dim3(32, 32 ,1)>>>();
+}
+
 // transfer graph to gpu global memory
 // should perform only once
 void init_bottom_up_gpu() {
+	warm_up_device();
+
 	size_rowstarts = (g.nlocalverts + 1) * sizeof(int64_t);
 	size_column = g.rowstarts[g.nlocalverts] * sizeof(int64_t);
 	cudaMalloc((void **)&rowstarts_g, size_rowstarts);
