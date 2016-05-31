@@ -85,14 +85,6 @@ void init() {
 }
 
 void wrap_up() {
-#ifdef SHOWTIMER
-    if (rank == root_owner) {
-        double time_all = time_comm + time_comp;
-        PRINTLN_RANK("time commp: %.6lfs (%.3f), time comm: %.6lfs (%.3f)",
-                     time_comp, time_comp / time_all, time_comm, time_comm / time_all)
-    }
-#endif
-
     // int visit_node = 0;
     // int i;
     // for (i = 0; i < g.nlocalverts; i++) {
@@ -143,19 +135,19 @@ void check_cuda_aware_support() {
     printf("This MPI library cannot determine if there is CUDA-aware support.\n");
 #endif /* MPIX_CUDA_AWARE_SUPPORT */
  
-//     printf("Run time check:\n");
-// #if defined(MPIX_CUDA_AWARE_SUPPORT)
-//     if (1 == MPIX_Query_cuda_support()) {
-//         have_cuda_aware_support = 1;
-//         printf("This MPI library has CUDA-aware support.\n");
-//     } else {
-//         have_cuda_aware_support = 0;
-//         printf("This MPI library does not have CUDA-aware support.\n");
-//     }
-// #else /* !defined(MPIX_CUDA_AWARE_SUPPORT) */
-//     have_cuda_aware_support = 0;
-//     printf("This MPI library cannot determine if there is CUDA-aware support.\n");
-// #endif /* MPIX_CUDA_AWARE_SUPPORT */
+    printf("Run time check:\n");
+#if defined(MPIX_CUDA_AWARE_SUPPORT)
+    if (1 == MPIX_Query_cuda_support()) {
+        have_cuda_aware_support = 1;
+        printf("This MPI library has CUDA-aware support.\n");
+    } else {
+        have_cuda_aware_support = 0;
+        printf("This MPI library does not have CUDA-aware support.\n");
+    }
+#else /* !defined(MPIX_CUDA_AWARE_SUPPORT) */
+    have_cuda_aware_support = 0;
+    printf("This MPI library cannot determine if there is CUDA-aware support.\n");
+#endif /* MPIX_CUDA_AWARE_SUPPORT */
 }
 
 void bfs_gpu_cuda_ompi(int64_t root) {
@@ -169,16 +161,22 @@ void bfs_gpu_cuda_ompi(int64_t root) {
 #endif
     }
 
-    // double sync_total = 0;
-    // double comm_total = 0; // no value ??????????????????????
+#ifdef SHOWTIMER
+    double t_start = 0;
+    double t_stop = 0;
+    double t_total = 0;
+#endif
 
     init_pred_gpu(root, rank == root_owner);
     set_frontier_gpu(root);
     while (1) {
+#ifdef SHOWTIMER
+        if (rank == root_owner)
+            t_start = MPI_Wtime();
+#endif
+
         one_step_bottom_up_gpu();
 
-        // double sync_start = MPI_Wtime();
-        // double comm_start = MPI_Wtime();
         if (have_cuda_aware_support) {
             sync_frontier_gpu();
         }
@@ -191,19 +189,24 @@ void bfs_gpu_cuda_ompi(int64_t root) {
             save_frontier_g();
 
         }
-        // double comm_end = MPI_Wtime();
-        // double sync_end = MPI_Wtime();
-        // comm_total += comm_end - comm_start;
-        // sync_total += sync_end - sync_start;
+
+#ifdef SHOWTIMER
+        if (rank == root_owner) {
+            t_stop = MPI_Wtime();
+            t_total += t_stop - t_start;
+        }
+#endif
+
+#ifdef SHOWTIMER
+    if (rank == root_owner)
+        PRINTLN("[TIMER] time for level: %.6lfs", t_total);
+#endif
     
         if (!frontier_have_more_gpu())
             break;
     }
 
     pred_from_gpu();
-
-    // if (rank == 0)
-        // PRINTLN_RANK("sync total: %lf s, comm total: %lf s", sync_total, comm_total);
 }
 
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
