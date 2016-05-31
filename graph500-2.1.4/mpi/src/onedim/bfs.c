@@ -109,14 +109,6 @@ void init() {
 }
 
 void wrap_up() {
-#ifdef SHOWTIMER
-    if (rank == root_owner) {
-        double time_all = time_comm + time_comp;
-        PRINTLN_RANK("time commp: %.6lfs (%.3f), time comm: %.6lfs (%.3f)",
-                     time_comp, time_comp / time_all, time_comm, time_comm / time_all)
-    }
-#endif
-
     int64_t visit_node = 0;
     int i;
     for (i = 0; i < g.nlocalverts; i++)
