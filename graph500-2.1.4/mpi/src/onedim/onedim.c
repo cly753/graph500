@@ -13,6 +13,7 @@
 #include "constants.h"
 #include "print.h"
 #include "bfs.h"
+#include "bottom_up.h"
 
 oned_csr_graph g;
 //oned_csc_graph g_csc;
@@ -218,14 +219,14 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 //    show_in_edge();
 // #endif
 
-    // init_bottom_up_gpu();
+    init_bottom_up_gpu();
 
 }
 
 void free_graph_data_structure(void) {
     free_oned_csr_graph(&g);
 
-    // end_bottom_up_gpu();
+    end_bottom_up_gpu();
 
     // TODO free others
 }

@@ -12,4 +12,11 @@ void sync_frontier();
 
 int frontier_have_more();
 
+extern int64_t *frontier_g; // point to memory in GPU
+extern int64_t *frontier_next_g; // point to memory in GPU
+
+void sync_frontier_gpu();
+
+void sync_frontier_work_around();
+
 #endif //MPI_FRONTIER_TRACKER_H

@@ -50,6 +50,30 @@ void show_pred() {
     PRINTLN("")
 }
 
+void wrap_up() {
+    int64_t visit_node = 0;
+    int i;
+    for (i = 0; i < g.nlocalverts; i++)
+        if (pred[i] != -1)
+            visit_node++;
+
+//    int64_t total_visit[1];
+//    MPI_Reduce(
+//        visit_node, // void* send_data,
+//        &total_visit, // void* recv_data,
+//        1, // int count,
+//        MPI_LONG, // MPI_Datatype datatype,
+//        MPI_SUM, // MPI_Op op,
+//        0, // int root,
+//        MPI_COMM_WORLD); // MPI_Comm communicator)
+//    if (rank == 0)
+//        PRINTLN_RANK("total visit: %d", &total_visit);
+}
+
+#define USE_TOPDOWN 1
+#define USE_BOTTOMUP 2
+#define USE_GPU 3
+
 extern int64_t *in_edge_start;
 extern int64_t *in_edge_to;
 int now_top_down;
@@ -58,13 +82,23 @@ const int cutoff_to_bottom_up = 2; // first topdown->bottomup switch
 const int cutoff_to_top_down = 4; // first bottomup->topdown switch
 const float alpha = 0.2;
 const float beta = 10;
-int top_down_better() {
-    // so good!
-    if (nth_call > cutoff_to_top_down)
-        return 0;
-    if (nth_call++ < cutoff_to_bottom_up)
-        return 1;
-    return 0;
+int get_strategy() {
+    int strategy = -1;
+    switch (nth_call) {
+    case 0 ... 1: // inclusive
+        strategy = USE_TOPDOWN;
+        break;
+    case 2 ... 2:
+        strategy = USE_GPU;
+        break;
+    case 3 ... 4:
+        strategy = USE_BOTTOMUP;
+        break;
+    default: // > 4
+        strategy = USE_TOPDOWN;
+    }
+    nth_call++;
+    return strategy;
 
     // cann't see benefit, need more test
     int nf = 0;
@@ -108,35 +142,25 @@ void init() {
     nth_call = 0;
 }
 
-void wrap_up() {
-    int64_t visit_node = 0;
-    int i;
-    for (i = 0; i < g.nlocalverts; i++)
-        if (pred[i] != -1)
-            visit_node++;
+void one_step_gpu_from_cpu() {
+    save_frontier_g();
+    pred_to_gpu();
+    one_step_bottom_up_gpu();
+    pred_from_gpu();
+    read_frontier_next_g();
+}
 
-//    int64_t total_visit[1];
-//    MPI_Reduce(
-//        visit_node, // void* send_data,
-//        &total_visit, // void* recv_data,
-//        1, // int count,
-//        MPI_LONG, // MPI_Datatype datatype,
-//        MPI_SUM, // MPI_Op op,
-//        0, // int root,
-//        MPI_COMM_WORLD); // MPI_Comm communicator)
-//    if (rank == 0)
-//        PRINTLN_RANK("total visit: %d", &total_visit);
+int frontier_have_more_gpu_from_cpu() {
+    // TODO
+    assert(0); 
 }
 
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     pred = predpred;
-    init();
-    init_frontier();
+    init(); // set pred to -1
+    init_frontier(); // set frontier, frontier_next to 0
 
     root_owner = VERTEX_OWNER(root);
-
-    // bfs_gpu(root);
-    // return ;
 
 #ifdef SHOWTIMER
     double t_start = 0;
@@ -159,11 +183,19 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
             t_start = MPI_Wtime();
 #endif
 
-        if (top_down_better()) {
+        int strategy = get_strategy();
+        switch (strategy) {
+        case USE_TOPDOWN:
             one_step_top_down();
-        }
-        else {
+            break;
+        case USE_BOTTOMUP:
             one_step_bottom_up();
+            break;
+        case USE_GPU:
+            one_step_gpu_from_cpu();
+            break;
+        default:
+            assert(0);
         }
 
 #ifdef SHOWDEBUG
@@ -184,6 +216,10 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         PRINTLN("[TIMER] time for level: %.6lfs", t_total);
 #endif
 
+        // TODO
+        // try
+        // if (!frontier_have_more_gpu_from_cpu())
+        // but this seems fast enough ~ 0.000001s (each level ~ 0.000248s)
         if (!frontier_have_more())
             break;
     }
