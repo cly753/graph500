@@ -243,8 +243,8 @@ void init_bottom_up_gpu() {
 
 	size_row = size_column;
 	cudaMalloc((void **)&row_g, size_row);
-	// fill_row_g<<<(g.nlocalverts + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts);
-	fill_row_g_binary<<<(g.rowstarts[g.nlocalverts] + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts, g.rowstarts[g.nlocalverts]);
+	fill_row_g<<<(g.nlocalverts + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts);
+	// fill_row_g_binary<<<(g.rowstarts[g.nlocalverts] + BLOCK_X - 1) / BLOCK_X, BLOCK_X>>>(rowstarts_g, row_g, g.nlocalverts, g.rowstarts[g.nlocalverts]);
 
 	// here assume pred always reside in GPU
 	// from beginning to end
