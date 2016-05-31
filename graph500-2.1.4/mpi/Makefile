@@ -67,8 +67,8 @@ bottom_up_gpu: $(SOURCES_ONEDIM_GPU) $(HEADERS)
 # graph500_mpi_onedim: mpi_objects generator_objects
 # 	$(MPICC) $(LDFLAGS) $(OBJECTS) -lm -o graph500_mpi_onedim
 
-graph500_mpi_onedim: $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES) $(SOURCES_ONEDIM) bottom_up_gpu
-	$(MPICC) $(CFLAGS) $(LDFLAGS) -o graph500_mpi_onedim $(SOURCES_ONEDIM) $(SOURCES) $(GENERATOR_SOURCES) $(OBJECT_ONEDIM_GPU) -lm $(LIB_OPT)
+graph500_mpi_onedim: $(SOURCES) $(HEADERS) $(GENERATOR_SOURCES) $(SOURCES_ONEDIM)
+	$(MPICC) $(CFLAGS) $(LDFLAGS) -o graph500_mpi_onedim $(SOURCES_ONEDIM) $(SOURCES) $(GENERATOR_SOURCES) -lm
 
 clean:
 	-rm -f graph500_mpi_* *.o *.a

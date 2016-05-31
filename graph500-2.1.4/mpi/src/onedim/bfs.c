@@ -136,33 +136,6 @@ void wrap_up() {
 //        PRINTLN_RANK("total visit: %d", &total_visit);
 }
 
-void bfs_gpu(int64_t root) {
-    if (rank == root_owner) {
-#ifdef SHOWDEBUG
-        PRINTLN("rank %02d: root: %d", rank, (int)root)
-#endif
-        pred[VERTEX_LOCAL(root)] = root;
-    }
-
-    SET_GLOBAL(root, frontier);
-
-    pred_to_gpu();
-
-    while (1) {
-        one_step_bottom_up_gpu();
-#ifdef SHOWDEBUG
-        show_pred();
-#endif
-
-        sync_frontier();
-
-        if (!frontier_have_more())
-            break;
-    }
-
-    pred_from_gpu();
-}
-
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     pred = predpred;
     init();
@@ -189,6 +162,11 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     SET_GLOBAL(root, frontier);
 
     while (1) {
+#ifdef SHOWTIMER
+        if (rank == root_owner)
+            t_start = MPI_Wtime();
+#endif
+
         if (top_down_better()) {
             one_step_top_down();
         }
@@ -200,10 +178,6 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         show_pred();
 #endif
 
-#ifdef SHOWTIMER
-        if (rank == root_owner)
-            t_start = MPI_Wtime();
-#endif
         sync_frontier();
 
 #ifdef SHOWTIMER
@@ -213,14 +187,14 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         }
 #endif
 
+#ifdef SHOWTIMER
+    if (rank == root_owner)
+        PRINTLN("[TIMER] time for level: %.6lfs", t_total);
+#endif
+
         if (!frontier_have_more())
             break;
     }
-
-#ifdef SHOWTIMER
-    if (rank == root_owner)
-        PRINTLN("[TIMER] time for communication: %.6lfs", t_total);
-#endif
 
     wrap_up();
 }
