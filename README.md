@@ -11,24 +11,16 @@
 
 - ~~~ TBD 
 
-#### Version x
+#### Version CPU + GPU
 
 - Level-synchronized BFS.
 - Use 1-d partiton to distribute the graph.
-- Convert CSR to CSC.
+- CSR for bottom up.
+- CSC for top down.
+- Bitmap tracking global frontier.
 - Synchronize each level using All-to-all.
 - Implementation is based on MPI.
-
-##### Profiling
-
-- ~~~ TBD 
-
-#### Version y
-
-- Level-synchronized bottom-up BFS.
-- Use CSR.
-- Bitmap tracking global frontier.
-- Filter duplicated edges.
+- Switch to GPU at slowest level.
 
 ##### Profiling
 
