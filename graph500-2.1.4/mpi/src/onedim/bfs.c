@@ -146,7 +146,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 
     if (rank == root_owner) {
 #ifdef SHOWDEBUG
-        PRINTLN_RANK("root: %d", rank, (int)root)
+        PRINTLN_RANK("root: %d", (int)root)
 #endif
         pred[VERTEX_LOCAL(root)] = root;
     }

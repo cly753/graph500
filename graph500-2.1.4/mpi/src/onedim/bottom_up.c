@@ -20,6 +20,10 @@ void one_step_bottom_up() {
 //    #pragma omp parallel for
     for (i = 0; i < g.nlocalverts; i++) {
         if (pred[i] == -1) {
+#ifdef FILTER_ZERO_DEGREE
+        if (g.rowstarts[i] == g.rowstarts[i + 1])
+            break;
+#endif
             int j;
             for (j = (int) g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
                 int64_t parent_global = g.column[j];

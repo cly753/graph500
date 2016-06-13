@@ -7,12 +7,14 @@
 
 // #define BOTTOM_UP
 
-#define FILER_EDGE
+#define FILTER_EDGE
+#define FILTER_ZERO_DEGREE
 
 // #define SHOWDEBUG
 #define SHOWTIMER
 
 #define DOPRINT
+
 
 
 #endif //MPI_CONSTANTS_H

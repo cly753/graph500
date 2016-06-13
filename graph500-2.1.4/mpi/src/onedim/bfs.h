@@ -33,6 +33,16 @@
 #define TIME_IT(x, double_ptr_time_output) { x; *double_ptr_time_output = 0; }
 #endif
 
+#define mpi_assert(expression) \
+    do { \
+        if (!(expression)) { \
+            fprintf(stderr, "Failed assertion at %d in %s",__LINE__, __FILE__); \
+            MPI_Abort(MPI_COMM_WORLD, 1); \
+        } \
+    } while (0)
+
+
+
 int local_long_n;
 size_t local_long_nb;
 int global_long_n;
@@ -44,6 +54,8 @@ size_t global_long_nb;
 void show_local(int64_t *a);
 
 void show_global(int64_t *a);
+
+void show_pred();
 
 void bfs(oned_csr_graph* g, int64_t root, int64_t* pred);
 
