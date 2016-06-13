@@ -142,6 +142,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     double t_start = 0;
     double t_stop = 0;
     double t_total = 0;
+    int level = 0;
 #endif
 
     if (rank == root_owner) {
@@ -200,7 +201,8 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 
 #ifdef SHOWTIMER
     if (rank == root_owner)
-        PRINTLN("[TIMER] time for level: %.6lfs", t_total);
+        PRINTLN("[TIMER] time for lvl %d: %.6lfs", level++, t_total);
+
 #endif
 
         if (!frontier_have_more())

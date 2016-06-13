@@ -8,7 +8,7 @@
 // #define BOTTOM_UP
 
 #define FILTER_EDGE
-#define FILTER_ZERO_DEGREE
+// #define FILTER_ZERO_DEGREE
 
 // #define SHOWDEBUG
 #define SHOWTIMER

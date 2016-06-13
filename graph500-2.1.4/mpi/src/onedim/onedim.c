@@ -16,6 +16,7 @@
 #include "build_graph.h"
 // #include "relabel.h"
 #include "vertex_relabel.h"
+#include "sort_graph.h"
 
 #include "../../../generator/graph_generator.h"
 
@@ -211,10 +212,6 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 
     new_convert_graph_to_oned_csr(tg_copy, &g);
 
-#ifdef SHOWDEBUG
-    show_g();
-#endif
-
     free(tg_copy->edgememory);
     free(tg_copy);
 #endif // FILTER_ZERO_DEGREE
@@ -231,19 +228,22 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     count_duplicate_edge();
     filter_duplicate_edge();
 #ifdef SHOWDEBUG
-    show_csr();
+    // show_csr();
 #endif
     count_duplicate_edge();
 #endif
 
    csr_to_in_edge();
 #ifdef SHOWDEBUG
-   show_in_edge();
+   // show_in_edge();
 #endif
 
 #ifdef FILTER_ZERO_DEGREE
     calculate_remapped_count();
 #endif
+
+    sort_csr_by_degree(&g);
+    sort_in_edge_by_degree(in_edge_start, in_edge_to);
 
 #ifdef SHOWDEBUG
     show_g();
@@ -252,8 +252,6 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 
 void free_graph_data_structure(void) {
     free_oned_csr_graph(&g);
-
-    // end_bottom_up_gpu();
 
     // TODO free others
 }

@@ -193,6 +193,30 @@ int* remap_send_buf_start;
 int* remap_send_buf_current;
 int remap_send_total;
 
+int *is_old_owner;
+int64_t *pred_to_send; // [old idx, new idx local, old idx, new idx local, ...]
+
+void calculate_pred_to_send() {
+	memcpy(remap_send_buf_current, remap_send_buf_start, size * sizeof(int));
+    int i;
+    for (i = non_zero_degree_count - 1; i >= 0; i--) {
+        int64_t new_idx = VERTEX_TO_GLOBAL(rank, i);
+        int64_t child_old_index = get_old_index(new_idx);
+        int owner = VERTEX_OWNER(child_old_index);
+        // PRINTLN_RANK("(%d) new idx = %d, child_old_index = %d, owner = %d",
+        	// i, new_idx, child_old_index, owner)
+        if (owner == rank) {
+        	is_old_owner[i] = 1;
+        }
+        else {
+        	is_old_owner[i] = 0;
+
+        	pred_to_send[remap_send_buf_current[owner]++] = child_old_index;
+        	pred_to_send[remap_send_buf_current[owner]++] = i;
+        }
+    }
+}
+
 void calculate_remapped_count() {
 #ifdef SHOWDEBUG
     PRINTLN_RANK("non_zero_degree_count %d", non_zero_degree_count)
@@ -226,6 +250,7 @@ void calculate_remapped_count() {
     
     remap_send_buf = xmalloc(remap_send_total * sizeof(int64_t));
     memset(remap_send_buf, 0, remap_send_total * sizeof(int64_t));
+    
     remap_send_buf_start = xmalloc(size * sizeof(int));
     remap_send_buf_start[0] = 0;
     for (i = 1; i < size; i++)
@@ -255,19 +280,33 @@ void calculate_remapped_count() {
         remap_receive_total += remap_receive_count[i];
     remap_receive_buf = xmalloc(remap_receive_total * sizeof(int64_t));
     memset(remap_receive_buf, 0, remap_receive_total * sizeof(int64_t));
+
+    pred_to_send = xmalloc(remap_send_total * sizeof(int64_t));
+    memset(pred_to_send, 0, remap_send_total * sizeof(int64_t));
+    is_old_owner = xmalloc(non_zero_degree_count * sizeof(int));
+    calculate_pred_to_send();
 }
 
 void recover_index(int64_t *pred) {
-#ifdef GENERATOR_USE_PACKED_EDGE_TYPE
-    PRINTLN_RANK("GENERATOR_USE_PACKED_EDGE_TYPE yes recover_index skip")
-    mpi_assert(false);
-#endif
-
     memcpy(remap_send_buf_current, remap_send_buf_start, size * sizeof(int));
     int i;
-    // g.nlocalverts should be the filtered value
-    // but size of pred should be the un-filerted value
+    for (i = 0; i < remap_send_total; ) {
+    	int64_t child_old_index = pred_to_send[i];
+    	remap_send_buf[i] = child_old_index;
+    	i++;
+       	int64_t new_index_local = pred_to_send[i];
+       	int64_t parent_index_global = pred[new_index_local];
+       	pred[new_index_local] = -1;
+       	if (parent_index_global != -1)
+       		parent_index_global = get_old_index(parent_index_global);
+       	remap_send_buf[i] = parent_index_global;
+    	i++;
+    }
+
     for (i = non_zero_degree_count - 1; i >= 0; i--) {
+    	if (!is_old_owner[i])
+    		continue ;
+
 #ifdef SHOWDEBUG
         show_exist();
 #endif
@@ -276,46 +315,30 @@ void recover_index(int64_t *pred) {
 #ifdef SHOWDEBUG
         PRINTLN_RANK("recovering idx %d new %d (old %d) ANOTHER WAY %d", i, (int)new_idx, (int)child_old_index, (int)get_old_index(VERTEX_TO_GLOBAL(rank, i)))
 #endif
-        int64_t parent_old_index;
-        if (pred[i] != -1)
+        int64_t parent_old_index = pred[i];
+        if (parent_old_index != -1)
             parent_old_index = get_old_index(pred[i]);
-        else
-            parent_old_index = pred[i];
-        int owner = VERTEX_OWNER(child_old_index);
-        if (owner == rank) {
-            int64_t old_local = VERTEX_LOCAL(child_old_index);
-            pred[old_local] = parent_old_index;
-#ifdef SHOWDEBUG
-            PRINTLN_RANK("old_local = %d, nlocalverts = %d, nglobalverts = %d, parent_old_index = %d", 
-                (int)old_local, (int)g.nlocalverts, (int)g.nglobalverts, parent_old_index)
-            PRINTLN_RANK("put pred[%d]=%d to pred[%d]=%d", 
-                (int)VERTEX_TO_GLOBAL(rank, i), (int)pred[i], 
-                (int)get_old_index(VERTEX_TO_GLOBAL(rank, i)), (int)parent_old_index)
-#endif
-            if (old_local != i)
-                pred[i] = -1;
-        }
-        else {
-            remap_send_buf[remap_send_buf_current[owner]++] = child_old_index;
-            remap_send_buf[remap_send_buf_current[owner]++] = parent_old_index;
 
+        int64_t old_local = VERTEX_LOCAL(child_old_index);
+        pred[old_local] = parent_old_index;
 #ifdef SHOWDEBUG
-            PRINTLN_RANK("will send pred[%d]=%d to owner %d", 
-                child_old_index, parent_old_index, owner)
+        PRINTLN_RANK("put pred[%d]=%d to pred[%d]=%d", 
+            (int)VERTEX_TO_GLOBAL(rank, i), (int)pred[i], 
+            (int)get_old_index(VERTEX_TO_GLOBAL(rank, i)), (int)parent_old_index)
 #endif
+        if (old_local != i)
             pred[i] = -1;
-        }
     }
     
     MPI_Alltoallv(remap_send_buf, // const void *sendbuf
-              remap_send_count, // const int sendcounts[]
-              remap_send_buf_start, // const int sdispls[]
-              MPI_LONG, // MPI_Datatype sendtype
-              remap_receive_buf, // void *recvbuf
-              remap_receive_count, // const int recvcounts[]
-              remap_receive_buf_start, // const int rdispls[]
-              MPI_LONG, // MPI_Datatype recvtype
-              MPI_COMM_WORLD); // MPI_Comm comm
+		remap_send_count, // const int sendcounts[]
+		remap_send_buf_start, // const int sdispls[]
+		MPI_LONG, // MPI_Datatype sendtype
+		remap_receive_buf, // void *recvbuf
+		remap_receive_count, // const int recvcounts[]
+		remap_receive_buf_start, // const int rdispls[]
+		MPI_LONG, // MPI_Datatype recvtype
+		MPI_COMM_WORLD); // MPI_Comm comm
     
     for (i = 0; i < remap_receive_total; ) {
         int64_t child_old_index = remap_receive_buf[i];

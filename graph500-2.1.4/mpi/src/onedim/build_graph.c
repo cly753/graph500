@@ -50,9 +50,22 @@ int64_t** all_column;
 
 extern int64_t max_index; // in vertex_relabel.c
 
-void prepare(tuple_graph *tg, oned_csr_graph *g) {
-    int i;
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
 
+void prepare(tuple_graph *tg, oned_csr_graph *g) {
+
+    int i;
+	if (max_index <= 0) {
+		for (i = 0; i < tg->edgememory_size; i++) {
+	        int64_t v0 = get_v0_from_edge(tg->edgememory + i);
+	        int64_t v1 = get_v1_from_edge(tg->edgememory + i);
+	        max_index = MAX(max_index, v0);
+	        max_index = MAX(max_index, v1);
+	    }
+	}
+	
 	int graph_size = 1;
 	int lg = 0;
 	while (graph_size < max_index)
