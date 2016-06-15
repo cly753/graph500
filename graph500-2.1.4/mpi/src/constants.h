@@ -14,5 +14,7 @@
 
 #define DOPRINT
 
+#define NEW_GRAPH_BUILDER
+
 
 #endif //MPI_CONSTANTS_H
