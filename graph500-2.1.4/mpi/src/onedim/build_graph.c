@@ -1,4 +1,3 @@
-
 #include "build_graph.h"
 
 #include <stdio.h>
@@ -29,7 +28,7 @@
 //   uint32_t v1_low;
 //   uint32_t high; /* v1 in high half, v0 in low half */
 // } packed_edge;
-// 
+//
 // typedef struct tuple_graph {
 //     int data_in_file;
 //     /* 1 for file, 0 for memory */
