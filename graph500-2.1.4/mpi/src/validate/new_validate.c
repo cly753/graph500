@@ -11,12 +11,21 @@ MPI_Comm comm_validate;
 int rank_validate;
 int size_validate;
 
+int64_t get_actual_nglobalverts(int64_t nglobalverts) {
+    int64_t actual = 1;
+    while (actual < nglobalverts)
+        actual <<= 1;
+    return actual;
+}
+
 // return is_validate_passed
-int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalverts, const size_t nlocalverts,
+int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalverts_fake, const size_t nlocalverts,
                             const int64_t root, int64_t *const pred, int64_t *const edge_visit_count_ptr) {
 #ifdef SHOWDEBUG
     if (rank == 0) PRINTLN_RANK("new_validate_bfs_result")
 #endif
+
+    int64_t nglobalverts = get_actual_nglobalverts(nglobalverts_fake);
 
     int64_t *pred_global = NULL;
     int64_t *pred_global_unordered = NULL;
@@ -26,7 +35,7 @@ int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalve
     }
 
 #ifdef SHOWDEBUG
-    if (rank == 0) PRINTLN_RANK("nlocalverts = %d, nglobalverts = %d", nlocalverts, nglobalverts)
+    if (rank == 0) PRINTLN_RANK("nlocalverts = %d, nglobalverts = %d, size = %d", nlocalverts, nglobalverts, size)
 #endif
     MPI_Gather(
             pred, // void* send_data,
