@@ -201,13 +201,13 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 #ifdef FILER_EDGE
 // #ifdef SHOWDEBUG
 //     show_csr();
+//     count_duplicate_edge();
 // #endif
-    count_duplicate_edge();
     filter_duplicate_edge();
 // #ifdef SHOWDEBUG
 //     show_csr();
+//     count_duplicate_edge();
 // #endif
-    count_duplicate_edge();
 #endif
 
    csr_to_in_edge();
