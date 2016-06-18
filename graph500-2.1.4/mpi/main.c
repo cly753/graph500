@@ -256,17 +256,6 @@ int main(int argc, char **argv) {
                     int64_t tgt = get_v1_from_edge(&actual_buf[i]);
                     if (src == tgt) continue;
 
-                     // --- cly ---
-//                     int64_t a = src;
-//                     int64_t b = tgt;
-//                     if (a > b) {
-//                         a ^= b;
-//                         b ^= a;
-//                         a ^= b;
-//                     }
-//                     PRINTLN("edge[%d]: %"PRId64" - %"PRId64"", i, a, b)
-
-
                     if (src / bitmap_size_in_bytes / CHAR_BIT == my_col) {
 #ifdef _OPENMP
 #pragma omp atomic
@@ -386,6 +375,43 @@ int main(int argc, char **argv) {
     int bfs_root_idx;
     for (bfs_root_idx = 0; bfs_root_idx < num_bfs_roots; ++bfs_root_idx) {
         int64_t root = bfs_roots[bfs_root_idx];
+
+        // --- cly --- check zero degree --- start ---
+#ifdef ROOT_SKIP_ZERO_DEGREE
+        if (rank == 0) {
+            while (1) {
+                int is_zero_degree = 1;
+                int i;
+                for (i = 0; i < tg.edgememory_size && is_zero_degree; i++) {
+                    int64_t v0 = get_v0_from_edge(tg.edgememory + i);
+                    int64_t v1 = get_v1_from_edge(tg.edgememory + i);
+                    is_zero_degree &= !(v0 == root);
+                    is_zero_degree &= !(v1 == root);
+                }
+
+                if (is_zero_degree) {
+                    bfs_roots[bfs_root_idx]++;
+                    root++;
+                }
+                else
+                    break;
+            }
+        }
+        MPI_Bcast(
+            &bfs_roots[bfs_root_idx], // void* data,
+            1, // int count,
+            MPI_LONG_LONG, // MPI_Datatype datatype,
+            0, // int root,
+            MPI_COMM_WORLD); // MPI_Comm communicator)
+
+        MPI_Bcast(
+            &root, // void* data,
+            1, // int count,
+            MPI_LONG_LONG, // MPI_Datatype datatype,
+            0, // int root,
+            MPI_COMM_WORLD); // MPI_Comm communicator)
+#endif
+        // --- cly --- check zero degree --- end  ---
 
         if (rank == 0) fprintf(stderr, "Running BFS %d (root=%"PRId64")\n", bfs_root_idx, bfs_roots[bfs_root_idx]);
 

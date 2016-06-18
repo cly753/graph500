@@ -213,7 +213,7 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 #ifdef NEW_GRAPH_BUILDER
     new_convert_graph_to_oned_csr(tg_copy, &g);
 #else
-        convert_graph_to_oned_csr(tg_copy, &g);
+    convert_graph_to_oned_csr(tg_copy, &g);
 #endif
     free(tg_copy->edgememory);
     free(tg_copy);
