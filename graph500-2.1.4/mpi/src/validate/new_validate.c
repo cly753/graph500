@@ -1,7 +1,14 @@
 #include "new_validate.h"
 
+
 #include "constants.h"
 #include "print.h"
+
+#ifdef REACH_HERE_RANK
+#undef REACH_HERE_RANK
+#endif
+#define REACH_HERE_RANK {}
+
 
 int comm_validate_created;
 MPI_Comm comm_validate;
@@ -87,12 +94,55 @@ int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalve
 
     PRINTLN_RANK("rank_validate = %d, size_validate = %d", rank_validate, size_validate)
 
-    if (rank != 0)
+    if (rank != 0) {
+    	REACH_HERE_RANK
         return 1;
+    }
 
     int result = internal_validate_bfs_result(tg, nglobalverts, nglobalverts, root, pred_global, edge_visit_count_ptr);
     free(pred_global);
     return result;
+}
+
+struct gather {
+  void* input;
+  size_t elt_size;
+  void* output;
+  MPI_Datatype datatype;
+  int valid;
+  MPI_Win win;
+};
+
+/* Scatter a constant to various locations in an array. */
+struct scatter_constant {
+  void* array;
+  size_t elt_size;
+  void* constant;
+  MPI_Datatype datatype;
+  int valid;
+  MPI_Win win;
+};
+
+gather* internal_init_gather(void* input, size_t input_count, size_t elt_size, void* output, size_t output_count, size_t nrequests_max, MPI_Datatype dt) {
+  gather* g = (gather*)xmalloc(sizeof(gather));
+  g->input = input;
+  g->elt_size = elt_size;
+  g->output = output;
+  g->datatype = dt;
+  g->valid = 0;
+  MPI_Win_create(input, input_count * elt_size, elt_size, MPI_INFO_NULL, comm_validate, &g->win);
+  return g;
+}
+
+scatter_constant* internal_init_scatter_constant(void* array, size_t array_count, size_t elt_size, void* constant, size_t nrequests_max, MPI_Datatype dt) {
+  scatter_constant* sc = (scatter_constant*)xmalloc(sizeof(scatter_constant));
+  sc->array = array;
+  sc->elt_size = elt_size;
+  sc->constant = constant;
+  sc->datatype = dt;
+  sc->valid = 0;
+  MPI_Win_create(array, array_count * elt_size, elt_size, MPI_INFO_NULL, comm_validate, &sc->win);
+  return sc;
 }
 
 void internal_get_vertex_distribution_for_pred(size_t count, const int64_t *vertex_p, int *owner_p, size_t *local_p) {
@@ -154,6 +204,7 @@ static int check_value_ranges(const int64_t nglobalverts, const size_t nlocalver
  * itself.  Returns true if the predecessor map is valid. */
 static int build_bfs_depth_map(const int64_t nglobalverts, const size_t nlocalverts, const size_t maxlocalverts,
                                const int64_t root, int64_t *const pred) {
+	REACH_HERE_RANK
     (void) nglobalverts;
     int validation_passed = 1;
     int root_owner;
@@ -161,25 +212,31 @@ static int build_bfs_depth_map(const int64_t nglobalverts, const size_t nlocalve
     internal_get_vertex_distribution_for_pred(1, &root, &root_owner, &root_local);
     int root_is_mine = (root_owner == rank_validate);
     if (root_is_mine) assert (root_local < nlocalverts);
-
+    REACH_HERE_RANK
     {
         ptrdiff_t i;
 #pragma omp parallel for
         for (i = 0; i < (ptrdiff_t) nlocalverts; ++i) write_pred_entry_depth(&pred[i], UINT16_MAX);
         if (root_is_mine) write_pred_entry_depth(&pred[root_local], 0);
     }
+    REACH_HERE_RANK
     int64_t *restrict pred_pred = (int64_t *) xMPI_Alloc_mem(size_min(CHUNKSIZE, nlocalverts) *
                                                              sizeof(int64_t)); /* Predecessor info of predecessor vertex for each local vertex */
-    gather *pred_win = init_gather((void *) pred, nlocalverts, sizeof(int64_t), pred_pred,
+    REACH_HERE_RANK
+    gather *pred_win = internal_init_gather((void *) pred, nlocalverts, sizeof(int64_t), pred_pred,
                                    size_min(CHUNKSIZE, nlocalverts), size_min(CHUNKSIZE, nlocalverts), MPI_INT64_T);
+    REACH_HERE_RANK
     int64_t *restrict pred_vtx = (int64_t *) xmalloc(
             size_min(CHUNKSIZE, nlocalverts) * sizeof(int64_t)); /* Vertex (not depth) part of pred map */
+    REACH_HERE_RANK
     int *restrict pred_owner = (int *) xmalloc(size_min(CHUNKSIZE, nlocalverts) * sizeof(int));
     size_t *restrict pred_local = (size_t *) xmalloc(size_min(CHUNKSIZE, nlocalverts) * sizeof(size_t));
+    REACH_HERE_RANK
     int iter_number = 0;
     {
         /* Iteratively update depth[v] = min(depth[v], depth[pred[v]] + 1) [saturating at UINT16_MAX] until no changes. */
         while (1) {
+        	REACH_HERE_RANK
             ++iter_number;
             int any_changes = 0;
             ptrdiff_t ii;
@@ -195,6 +252,8 @@ static int build_bfs_depth_map(const int64_t nglobalverts, const size_t nlocalve
                     pred_vtx[i - i_start] = get_pred_from_pred_entry(pred[i]);
                 }
                 internal_get_vertex_distribution_for_pred(i_end - i_start, pred_vtx, pred_owner, pred_local);
+                REACH_HERE_RANK
+
 #pragma omp parallel for
                 for (i = i_start; i < i_end; ++i) {
                     if (pred[i] != -1) {
@@ -228,6 +287,7 @@ static int build_bfs_depth_map(const int64_t nglobalverts, const size_t nlocalve
                     }
                 }
             }
+            REACH_HERE_RANK
             MPI_Allreduce(MPI_IN_PLACE, &any_changes, 1, MPI_INT, MPI_LOR, comm_validate);
             if (!any_changes) break;
         }
@@ -237,6 +297,7 @@ static int build_bfs_depth_map(const int64_t nglobalverts, const size_t nlocalve
     free(pred_owner);
     free(pred_local);
     free(pred_vtx);
+    REACH_HERE_RANK
     return validation_passed;
 }
 
@@ -351,6 +412,7 @@ static int check_bfs_depth_map_using_predecessors(const tuple_graph *const tg, c
 int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalverts, const size_t nlocalverts,
                                  const int64_t root, int64_t *const pred, int64_t *const edge_visit_count_ptr) {
 
+	REACH_HERE_RANK
     assert (tg->edgememory_size >= 0 && tg->max_edgememory_size >= tg->edgememory_size &&
             tg->max_edgememory_size <= tg->nglobaledges);
     assert (pred);
@@ -376,7 +438,8 @@ int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglo
     uint64_t maxlocalverts_ui = nlocalverts;
     MPI_Allreduce(MPI_IN_PLACE, &maxlocalverts_ui, 1, MPI_UINT64_T, MPI_MAX, comm_validate);
     size_t maxlocalverts = (size_t) maxlocalverts_ui;
-
+    
+    REACH_HERE_RANK
     ptrdiff_t max_bufsize = tuple_graph_max_bufsize(tg);
     ptrdiff_t edge_chunk_size = ptrdiff_min(HALF_CHUNKSIZE, max_bufsize);
 
@@ -399,6 +462,7 @@ int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglo
             tg->max_edgememory_size <= tg->nglobaledges);
     assert (pred);
 
+    REACH_HERE_RANK
     /* Check that nothing else is its own parent. */
     {
         int *restrict pred_owner = (int *) xmalloc(size_min(CHUNKSIZE, nlocalverts) * sizeof(int));
@@ -434,19 +498,26 @@ int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglo
         free(pred_vtx);
     }
 
+    REACH_HERE_RANK
     assert (tg->edgememory_size >= 0 && tg->max_edgememory_size >= tg->edgememory_size &&
             tg->max_edgememory_size <= tg->nglobaledges);
     assert (pred);
 
     if (bfs_writes_depth_map()) {
+
+    	REACH_HERE_RANK
         int check_ok = check_bfs_depth_map_using_predecessors(tg, nglobalverts, nlocalverts, maxlocalverts, root, pred);
+        REACH_HERE_RANK
         if (!check_ok) validation_passed = 0;
     } else {
+    	REACH_HERE_RANK
         /* Create a vertex depth map to use for later validation. */
         int pred_ok = build_bfs_depth_map(nglobalverts, nlocalverts, maxlocalverts, root, pred);
+        REACH_HERE_RANK
         if (!pred_ok) validation_passed = 0;
     }
 
+    REACH_HERE_RANK
     {
         /* Check that all edges connect vertices whose depths differ by at most
          * one, and check that there is an edge from each vertex to its claimed
@@ -455,16 +526,21 @@ int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglo
         unsigned char *restrict pred_valid = (unsigned char *) xMPI_Alloc_mem(nlocalverts * sizeof(unsigned char));
         memset(pred_valid, 0, nlocalverts * sizeof(unsigned char));
         int64_t *restrict edge_endpoint = (int64_t *) xmalloc(2 * edge_chunk_size * sizeof(int64_t));
+        REACH_HERE_RANK
         int *restrict edge_owner = (int *) xmalloc(2 * edge_chunk_size * sizeof(int));
         size_t *restrict edge_local = (size_t *) xmalloc(2 * edge_chunk_size * sizeof(size_t));
         int64_t *restrict edge_preds = (int64_t *) xMPI_Alloc_mem(2 * edge_chunk_size * sizeof(int64_t));
-        gather *pred_win = init_gather((void *) pred, nlocalverts, sizeof(int64_t), edge_preds, 2 * edge_chunk_size,
+        REACH_HERE_RANK
+        gather *pred_win = internal_init_gather((void *) pred, nlocalverts, sizeof(int64_t), edge_preds, 2 * edge_chunk_size,
                                        2 * edge_chunk_size, MPI_INT64_T);
+        REACH_HERE_RANK
         unsigned char one = 1;
-        scatter_constant *pred_valid_win = init_scatter_constant((void *) pred_valid, nlocalverts,
+        scatter_constant *pred_valid_win = internal_init_scatter_constant((void *) pred_valid, nlocalverts,
                                                                  sizeof(unsigned char), &one, 2 * edge_chunk_size,
                                                                  MPI_UNSIGNED_CHAR);
         int64_t edge_visit_count = 0;
+
+    	REACH_HERE_RANK
         ITERATE_TUPLE_GRAPH_BEGIN(tg, buf, bufsize){
                             ptrdiff_t ii;
                             for (ii = 0; ii < max_bufsize; ii += HALF_CHUNKSIZE) {
@@ -542,6 +618,8 @@ int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglo
                             }
                         }
         ITERATE_TUPLE_GRAPH_END;
+
+    	REACH_HERE_RANK
         destroy_gather(pred_win);
         MPI_Free_mem(edge_preds);
         free(edge_owner);
@@ -568,6 +646,7 @@ int internal_validate_bfs_result(const tuple_graph *const tg, const int64_t nglo
         }
         MPI_Free_mem(pred_valid);
 
+    	REACH_HERE_RANK
         MPI_Allreduce(MPI_IN_PLACE, &edge_visit_count, 1, MPI_INT64_T, MPI_SUM, comm_validate);
         *edge_visit_count_ptr = edge_visit_count;
     }

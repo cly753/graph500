@@ -10,7 +10,7 @@
 #define FILTER_EDGE
 // #define FILTER_ZERO_DEGREE
 
-#define SHOWDEBUG
+// #define SHOWDEBUG
 #define SHOWTIMER
 
 #define DOPRINT
