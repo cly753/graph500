@@ -4,7 +4,7 @@ LDFLAGS = -fopenmp -g -L.
 # -g -pg
 MPICC = mpicc
 
-CFLAGS = ${CFLAGS_} -Isrc -Isrc/util -Isrc/onedim -I. -I..
+CFLAGS = ${CFLAGS_} -Isrc -Isrc/util -Isrc/onedim -Isrc/validate -I. -I..
 # CFLAGS = ${CFLAGS_}
 
 # all: graph500_mpi_simple graph500_mpi_one_sided graph500_mpi_replicated graph500_mpi_replicated_csc graph500_mpi_custom

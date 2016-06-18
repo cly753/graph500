@@ -108,35 +108,12 @@ void init() {
     nth_call = 0;
 }
 
-void wrap_up() {
-    int64_t visit_node = 0;
-    int i;
-    for (i = 0; i < g.nlocalverts; i++)
-        if (pred[i] != -1)
-            visit_node++;
-
-//    int64_t total_visit[1];
-//    MPI_Reduce(
-//        visit_node, // void* send_data,
-//        &total_visit, // void* recv_data,
-//        1, // int count,
-//        MPI_LONG, // MPI_Datatype datatype,
-//        MPI_SUM, // MPI_Op op,
-//        0, // int root,
-//        MPI_COMM_WORLD); // MPI_Comm communicator)
-//    if (rank == 0)
-//        PRINTLN_RANK("total visit: %d", &total_visit);
-}
-
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
     pred = predpred;
     init();
     init_frontier();
 
     root_owner = VERTEX_OWNER(root);
-
-    // bfs_gpu(root);
-    // return ;
 
 #ifdef SHOWTIMER
     double t_start = 0;
@@ -160,16 +137,10 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
             t_start = MPI_Wtime();
 #endif
 
-        if (top_down_better()) {
+        if (top_down_better())
             one_step_top_down();
-        }
-        else {
+        else
             one_step_bottom_up();
-        }
-
-#ifdef SHOWDEBUG
-        show_pred();
-#endif
 
 #ifdef SHOWDEBUG
         show_pred();
@@ -184,30 +155,19 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
 
 #ifdef SHOWTIMER
         double s_stop;
-        if (rank == root_owner) s_stop = MPI_Wtime();
-#endif
-
-#ifdef SHOWTIMER
-        if (rank == root_owner)
-            PRINTLN("[TIMER] time for comm : %.6lfs", s_stop - s_start);
-#endif
-        
-#ifdef SHOWTIMER
         if (rank == root_owner) {
+            s_stop = MPI_Wtime();
+            PRINTLN("[TIMER] time for comm : %.6lfs", s_stop - s_start);
+
             t_stop = MPI_Wtime();
             t_total = t_stop - t_start;
-        }
-#endif
 
-#ifdef SHOWTIMER
-    if (rank == root_owner)
-        PRINTLN("[TIMER] time for lvl %d: %.6lfs", level++, t_total);
+            PRINTLN("[TIMER] time for lvl %d: %.6lfs", level++, t_total);
+        }
 #endif
 
         if (!frontier_have_more())
             break;
     }
-
-    wrap_up();
 }
 
