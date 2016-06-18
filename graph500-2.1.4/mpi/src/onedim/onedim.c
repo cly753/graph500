@@ -224,16 +224,16 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     global_long_n = (g.nglobalverts + LONG_BITS - 1) / LONG_BITS;
     global_long_nb = global_long_n * sizeof(unsigned long);
 
-#ifdef FILTER_EDGE
-#ifdef SHOWDEBUG
-    show_csr();
-#endif
-    count_duplicate_edge();
+#ifdef FILER_EDGE
+// #ifdef SHOWDEBUG
+//     show_csr();
+//     count_duplicate_edge();
+// #endif
     filter_duplicate_edge();
-#ifdef SHOWDEBUG
-    // show_csr();
-#endif
-    count_duplicate_edge();
+// #ifdef SHOWDEBUG
+//     show_csr();
+//     count_duplicate_edge();
+// #endif
 #endif
 
    csr_to_in_edge();

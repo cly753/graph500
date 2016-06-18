@@ -17,6 +17,7 @@
 
 #define NEW_GRAPH_BUILDER
 
+#define SINGLE_PROC_VALIDATION
 
 
 #endif //MPI_CONSTANTS_H
