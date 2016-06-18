@@ -42,6 +42,7 @@
 #endif
 
 #include <assert.h>
+#include "constants.h"
 
 #ifdef DOPRINT
 
