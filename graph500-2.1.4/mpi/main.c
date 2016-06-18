@@ -36,6 +36,7 @@
 // #include "save.h"
 #include "print.h"
 #include <bfs.h>
+#include "new_validate.h"
 
 
 void show_graph(const tuple_graph* const tg, int64_t n) {
@@ -405,11 +406,12 @@ int main(int argc, char **argv) {
         int64_t edge_visit_count;
 
         // --- cly ---
-#ifndef SKIP_VALIDATE
+#ifndef SINGLE_PROC_VALIDATION
         int validation_passed_one = validate_bfs_result(&tg, max_used_vertex + 1, nlocalverts, root, pred,
                                                         &edge_visit_count);
 #else
-        int validation_passed_one = 1;
+        int validation_passed_one = new_validate_bfs_result(&tg, max_used_vertex + 1, nlocalverts, root, pred,
+                                                        &edge_visit_count);
 #endif
         if (rank == 0) fprintf(stderr, "edge count: %"PRId64"\n", edge_visit_count);
         double validate_stop = MPI_Wtime();

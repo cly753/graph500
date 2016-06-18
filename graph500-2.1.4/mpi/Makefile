@@ -4,14 +4,14 @@ LDFLAGS = -fopenmp -g -L.
 # -g -pg
 MPICC = mpicc
 
-CFLAGS = ${CFLAGS_} -Isrc -Isrc/util -Isrc/onedim -I. -I..
+CFLAGS = ${CFLAGS_} -Isrc -Isrc/util -Isrc/onedim -Isrc/validate -I. -I..
 # CFLAGS = ${CFLAGS_}
 
 # all: graph500_mpi_simple graph500_mpi_one_sided graph500_mpi_replicated graph500_mpi_replicated_csc graph500_mpi_custom
 all: graph500_mpi_onedim
 
 HEADERS_ = common.h oned_csr.h oned_csc.h redistribute.h mpi_workarounds.h onesided.h
-HEADERS = ${HEADERS_} src/constants.h src/util/print.h src/onedim/bfs.h src/onedim/top_down.h src/onedim/bottom_up.h src/onedim/frontier_tracker.h src/onedim/parent_tracker.h src/onedim/build_graph.h
+HEADERS = ${HEADERS_} src/constants.h src/util/print.h src/onedim/bfs.h src/onedim/top_down.h src/onedim/bottom_up.h src/onedim/frontier_tracker.h src/onedim/parent_tracker.h src/onedim/build_graph.h src/validate/new_validate.h
 # HEADERS = ${HEADERS_}
 
 GENERATOR_SOURCES = ../generator/graph_generator.c ../generator/make_graph.c ../generator/splittable_mrg.c ../generator/utils.c
@@ -20,7 +20,7 @@ SOURCES_ = main.c oned_csr.c oned_csc.c utils.c validate.c onesided.c onesided_e
 SOURCES = ${SOURCES_} src/util/print.c
 # OBJECTS_ = $(patsubst %.c, %.o, $(SOURCES))
 
-SOURCES_ONEDIM = src/onedim/onedim.c src/onedim/bfs.c src/onedim/top_down.c src/onedim/bottom_up.c src/onedim/frontier_tracker.c src/onedim/parent_tracker.c src/onedim/build_graph.c
+SOURCES_ONEDIM = src/onedim/onedim.c src/onedim/bfs.c src/onedim/top_down.c src/onedim/bottom_up.c src/onedim/frontier_tracker.c src/onedim/parent_tracker.c src/onedim/build_graph.c src/validate/new_validate.c
 # OBJECTS = ${OBJECTS_} $(patsubst %.c, %.o, $(SOURCES_ONEDIM))
 # SOURCES = ${SOURCES_}
 
