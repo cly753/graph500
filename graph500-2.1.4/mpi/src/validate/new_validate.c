@@ -17,7 +17,7 @@ int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalve
 #ifdef SHOWDEBUG
     if (rank == 0) PRINTLN_RANK("new_validate_bfs_result")
 #endif
-    
+
     int64_t *pred_global = NULL;
     int64_t *pred_global_unordered = NULL;
     if (rank == 0) {
@@ -90,6 +90,8 @@ int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalve
                 &comm_validate); // MPI_Comm* newcomm)
         MPI_Comm_rank(comm_validate, &rank_validate);
         MPI_Comm_size(comm_validate, &size_validate);
+
+        comm_validate_created = 1;
     }
 
     if (rank != 0) {
@@ -102,22 +104,22 @@ int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalve
 }
 
 struct gather {
-  void* input;
-  size_t elt_size;
-  void* output;
-  MPI_Datatype datatype;
-  int valid;
-  MPI_Win win;
+	void* input;
+	size_t elt_size;
+	void* output;
+	MPI_Datatype datatype;
+	int valid;
+	MPI_Win win;
 };
 
 /* Scatter a constant to various locations in an array. */
 struct scatter_constant {
-  void* array;
-  size_t elt_size;
-  void* constant;
-  MPI_Datatype datatype;
-  int valid;
-  MPI_Win win;
+	void* array;
+	size_t elt_size;
+	void* constant;
+	MPI_Datatype datatype;
+	int valid;
+	MPI_Win win;
 };
 
 gather* internal_init_gather(void* input, size_t input_count, size_t elt_size, void* output, size_t output_count, size_t nrequests_max, MPI_Datatype dt) {
