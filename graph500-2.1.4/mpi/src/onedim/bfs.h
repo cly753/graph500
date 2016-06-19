@@ -7,13 +7,27 @@
 #include "oned_csr.h"
 #include "constants.h"
 
-#define LONG_BITS (sizeof(unsigned long) * CHAR_BIT)
+#define LONG_BITS (64)
+#define LONG_BITS_LG (6)
+#define LONG_BITS_BIN 0x0000000000003f
+
+#if 1
+
+#define SET_LOCAL(v, a) do {(a)[VERTEX_LOCAL((v)) >> LONG_BITS_LG] |= (1UL << (VERTEX_LOCAL((v)) & LONG_BITS_BIN));} while (0)
+#define TEST_LOCAL(v, a) (((a)[VERTEX_LOCAL((v)) >> LONG_BITS_LG] & (1UL << (VERTEX_LOCAL((v)) & LONG_BITS_BIN))) != 0)
+
+#define SET_GLOBAL(v, a) do {(a)[(v) >> LONG_BITS_LG] |= (1UL << ((v) & LONG_BITS_BIN));} while (0)
+#define TEST_GLOBAL(v, a) (((a)[(v) >> LONG_BITS_LG] & (1UL << ((v) & LONG_BITS_BIN))) != 0)
+
+#else
 
 #define SET_LOCAL(v, a) do {(a)[VERTEX_LOCAL((v)) / LONG_BITS] |= (1UL << (VERTEX_LOCAL((v)) % LONG_BITS));} while (0)
 #define TEST_LOCAL(v, a) (((a)[VERTEX_LOCAL((v)) / LONG_BITS] & (1UL << (VERTEX_LOCAL((v)) % LONG_BITS))) != 0)
 
 #define SET_GLOBAL(v, a) do {(a)[(v) / LONG_BITS] |= (1UL << ((v) % LONG_BITS));} while (0)
 #define TEST_GLOBAL(v, a) (((a)[(v) / LONG_BITS] & (1UL << ((v) % LONG_BITS))) != 0)
+
+#endif
 
 #ifdef SHOWTIMER
 #define TIME_IT(x, double_ptr_time_output) { \
