@@ -21,8 +21,14 @@ void one_step_bottom_up() {
     PRINTLN("--- bottom up ---")
 #endif
     int i;
-    
-//    #pragma omp parallel for
+
+#ifdef USE_OPENMP
+    omp_set_num_threads(12);
+#endif
+
+#ifdef USE_OPENMP
+   #pragma omp parallel for
+#endif
 #ifndef FILTER_ZERO_DEGREE
     for (i = 0; i < g.nlocalverts; i++) {
 #else

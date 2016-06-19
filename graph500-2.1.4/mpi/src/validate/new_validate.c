@@ -22,6 +22,9 @@ int64_t get_actual_nglobalverts(int64_t nglobalverts) {
 // return is_validate_passed
 int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalverts_fake, const size_t nlocalverts,
                             const int64_t root, int64_t *const pred, int64_t *const edge_visit_count_ptr) {
+#ifdef USE_OPENMP
+    omp_set_num_threads(24);
+#endif
 
 #if defined(FILTER_ZERO_DEGREE) && defined(PUT_RECOVER_ZERO_DEGREE_IN_VALIDATION)
     recover_index(pred);

@@ -16,4 +16,6 @@
 
 #define ROOT_SKIP_ZERO_DEGREE
 
+#define USE_OPENMP
+
 #endif //MPI_CONSTANTS_H

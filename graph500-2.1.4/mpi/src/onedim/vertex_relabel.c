@@ -85,6 +85,10 @@ int been_relabelled(int64_t old_index) {
 // assume not define GENERATOR_USE_PACKED_EDGE_TYPE
 // see "../../../generator/graph_generator.h"
 void filter_zero_degree(const tuple_graph* const tg) {
+#ifdef USE_OPENMP
+    omp_set_num_threads(24);
+#endif
+
 #ifdef GENERATOR_USE_PACKED_EDGE_TYPE
     PRINTLN_RANK("GENERATOR_USE_PACKED_EDGE_TYPE yes filter_zero_degree skip")
     mpi_assert(false);
@@ -136,18 +140,20 @@ void filter_zero_degree(const tuple_graph* const tg) {
 
 #ifdef SHOWDEBUG
     PRINTLN_RANK("zero degree accu: %"PRId64"", accu)
-#endif
     for (i = 0; i <= max_index; i++) {
         if (TEST_GLOBAL(i, exist)) {
             int64_t new_idx = get_new_index(i);
             int64_t old_idx = get_old_index(new_idx);
-#ifdef SHOWDEBUG
             PRINTLN_RANK("old %"PRId64" -> new %"PRId64, i, new_idx);
-#endif        
             mpi_assert(i == old_idx);
         }
     }
+#endif
 
+
+#ifdef USE_OPENMP
+    #pragma omp parallel for
+#endif
     for (i = 0; i < tg->edgememory_size; i++) {
         int64_t v0 = get_v0_from_edge(tg->edgememory + i);
         int64_t v1 = get_v1_from_edge(tg->edgememory + i);
@@ -288,6 +294,10 @@ void calculate_remapped_count() {
 }
 
 void recover_index(int64_t *pred) {
+#ifdef USE_OPENMP
+    omp_set_num_threads(24);
+#endif
+
     memcpy(remap_send_buf_current, remap_send_buf_start, size * sizeof(int));
     int i;
     for (i = 0; i < remap_send_total; ) {
@@ -303,6 +313,9 @@ void recover_index(int64_t *pred) {
     	i++;
     }
 
+#ifdef USE_OPENMP
+    #pragma omp parallel for
+#endif
     for (i = non_zero_degree_count - 1; i >= 0; i--) {
     	if (!is_old_owner[i])
     		continue ;
