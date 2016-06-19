@@ -23,7 +23,7 @@ void one_step_bottom_up() {
     int i;
 
 #ifdef USE_OPENMP
-    omp_set_num_threads(12);
+    omp_set_num_threads(2);
 #endif
 
 #ifdef USE_OPENMP
