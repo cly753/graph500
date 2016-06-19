@@ -193,14 +193,14 @@ void count_duplicate_edge() {
 
 void make_graph_data_structure(const tuple_graph* const tg) {
     PRINTLN_RANK("tg->edgememory_size=%"PRId64"", tg->edgememory_size)
+
 #ifndef FILTER_ZERO_DEGREE
     new_convert_graph_to_oned_csr(tg, &g);
     // convert_graph_to_oned_csr(tg, &g);
-    
 #ifdef SHOWDEBUG
     show_csr();
 #endif
-    // relabel(&g);
+    
 #else // FILTER_ZERO_DEGREE
     tuple_graph *tg_copy = xmalloc(sizeof(tuple_graph));
     *tg_copy = *tg;
@@ -215,6 +215,7 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 #else
     convert_graph_to_oned_csr(tg_copy, &g);
 #endif
+
     free(tg_copy->edgememory);
     free(tg_copy);
 #endif // FILTER_ZERO_DEGREE
@@ -224,21 +225,25 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     global_long_n = (g.nglobalverts + LONG_BITS - 1) / LONG_BITS;
     global_long_nb = global_long_n * sizeof(unsigned long);
 
-#ifdef FILER_EDGE
-// #ifdef SHOWDEBUG
-//     show_csr();
-//     count_duplicate_edge();
-// #endif
+#ifdef FILTER_EDGE
+#ifdef SHOWDEBUG
+    show_csr();
+    count_duplicate_edge();
+#endif
     filter_duplicate_edge();
-// #ifdef SHOWDEBUG
-//     show_csr();
-//     count_duplicate_edge();
-// #endif
+
+#ifdef SHOWDEBUG
+    show_csr();
+#endif
 #endif
 
-   csr_to_in_edge();
+#if defined(SHOWDEBUG) || defined(FILTER_ZERO_DEGREE)
+    count_duplicate_edge();
+#endif
+
+    csr_to_in_edge();
 #ifdef SHOWDEBUG
-   // show_in_edge();
+   show_in_edge();
 #endif
 
 #ifdef FILTER_ZERO_DEGREE
@@ -306,42 +311,8 @@ void run_bfs(int64_t root, int64_t* pred) {
     * The validator will check this for correctness. */
 
 #ifndef FILTER_ZERO_DEGREE
+
     bfs(&g, root, pred);
-
-    // int64_t new_root = get_new_label(root);
-    // bfs(&g, new_root, pred);
-
-#ifdef SHOWDEBUG
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0) {
-        PRINTLN_RANK("BEFORE UNOD")
-        show_pred();
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-    else {
-        MPI_Barrier(MPI_COMM_WORLD);
-        PRINTLN_RANK("BEFORE UNOD")
-        show_pred();
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-    // undo_relabel(pred);
-
-#ifdef SHOWDEBUG
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0) {
-        PRINTLN_RANK("AFTER UNDO")
-        show_pred();
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
-    else {
-        MPI_Barrier(MPI_COMM_WORLD);
-        PRINTLN_RANK("AFTER UNDO")
-        show_pred();
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
 #else // FILTER_ZERO_DEGREE
     if (!been_relabelled(root)) {
@@ -378,13 +349,17 @@ void run_bfs(int64_t root, int64_t* pred) {
         if (rank == 0)
             t_start = MPI_Wtime();
 #endif
+
+#ifndef PUT_RECOVER_ZERO_DEGREE_IN_VALIDATION
         recover_index(pred);
+
 #ifdef SHOWTIMER
         if (rank == 0) {
             t_stop = MPI_Wtime();
             t_total = t_stop - t_start;
             PRINTLN("[TIMER] time for recover_index: %.6lfs", t_total);
         }
+#endif
 #endif
     }    
 

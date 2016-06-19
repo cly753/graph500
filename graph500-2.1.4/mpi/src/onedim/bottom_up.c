@@ -6,6 +6,10 @@
 #include "bfs.h"
 #include "print.h"
 
+#ifdef FILTER_ZERO_DEGREE
+extern int64_t non_zero_degree_count;
+#endif
+
 extern oned_csr_graph g;
 extern int64_t *pred;
 
@@ -17,13 +21,14 @@ void one_step_bottom_up() {
     PRINTLN("--- bottom up ---")
 #endif
     int i;
+    
 //    #pragma omp parallel for
+#ifndef FILTER_ZERO_DEGREE
     for (i = 0; i < g.nlocalverts; i++) {
-        if (pred[i] == -1) {
-#ifdef FILTER_ZERO_DEGREE
-        if (g.rowstarts[i] == g.rowstarts[i + 1])
-            break;
+#else
+    for (i = 0; i < non_zero_degree_count; i++) {
 #endif
+        if (pred[i] == -1) {
             int j;
             for (j = (int) g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
                 int64_t parent_global = g.column[j];

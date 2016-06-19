@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "print.h"
 
+#include "vertex_relabel.h"
 
 
 int comm_validate_created;
@@ -21,6 +22,11 @@ int64_t get_actual_nglobalverts(int64_t nglobalverts) {
 // return is_validate_passed
 int new_validate_bfs_result(const tuple_graph *const tg, const int64_t nglobalverts_fake, const size_t nlocalverts,
                             const int64_t root, int64_t *const pred, int64_t *const edge_visit_count_ptr) {
+
+#if defined(FILTER_ZERO_DEGREE) && defined(PUT_RECOVER_ZERO_DEGREE_IN_VALIDATION)
+    recover_index(pred);
+#endif
+
 #ifdef SHOWDEBUG
     if (rank == 0) PRINTLN_RANK("new_validate_bfs_result")
 #endif
