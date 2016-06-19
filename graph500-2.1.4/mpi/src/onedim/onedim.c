@@ -195,8 +195,11 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     PRINTLN_RANK("tg->edgememory_size=%"PRId64"", tg->edgememory_size)
 
 #ifndef FILTER_ZERO_DEGREE
+#ifdef NEW_GRAPH_BUILDER
     new_convert_graph_to_oned_csr(tg, &g);
-    // convert_graph_to_oned_csr(tg, &g);
+#else
+    convert_graph_to_oned_csr(tg, &g);
+#endif
 #ifdef SHOWDEBUG
     show_csr();
 #endif
