@@ -43,10 +43,24 @@ void sync_frontier() {
 }
 
 int frontier_have_more() {
+#ifdef USE_OPENMP
+    omp_set_num_threads(2);
+#endif
+
+    int yes = 0;
     int i;
-    for (i = 0; i < global_long_n; i++)
+
+#ifdef USE_OPENMP
+    #pragma omp parallel for
+#endif
+    for (i = 0; i < global_long_n; i++) {
         if (frontier[i])
+#ifdef USE_OPENMP
+            yes = 1;
+#else
             return 1;
-    return 0;
+#endif  
+    }
+    return yes;
 }
 
