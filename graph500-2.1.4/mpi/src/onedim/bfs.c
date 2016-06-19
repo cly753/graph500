@@ -65,40 +65,6 @@ int top_down_better() {
     if (nth_call++ < cutoff_to_bottom_up)
         return 1;
     return 0;
-
-    // cann't see benefit, need more test
-    int nf = 0;
-    int i;
-    for (i = 0; i < global_long_n; i++)
-        nf += __builtin_popcountll(frontier[i]);
-    return nf < g.nglobalverts / beta;
-
-    // too slow
-    if (now_top_down) {
-        int64_t mf = 0; // number of edges connecting frontier nodes
-        int i;
-        for (i = 0; i < g.nglobalverts; i++) {
-            if (TEST_GLOBAL(i, frontier)) {
-                mf += in_edge_start[i + 1] - in_edge_start[i];
-            }
-        }
-
-        int64_t mu = 0; // number of edges connecting unvisited nodes
-        for (i = 0; i < g.nlocalverts; i++) {
-            if (pred[i] == -1) {
-                mu += g.rowstarts[i + 1] - g.rowstarts[i];
-            }
-        }
-
-        return mf < mu / alpha;
-    }
-    else {
-        int nf = 0;
-        int i;
-        for (i = 0; i < global_long_n; i++)
-            nf += __builtin_popcountll(frontier[i]);
-        return nf < g.nglobalverts / beta;
-    }
 }
 
 void init() {
