@@ -14,6 +14,7 @@
 #include "print.h"
 #include "bfs.h"
 #include "bottom_up.h"
+#include "build_graph.h"
 
 oned_csr_graph g;
 //oned_csc_graph g_csc;
@@ -187,7 +188,11 @@ void count_duplicate_edge() {
 void make_graph_data_structure(const tuple_graph* const tg) {
     PRINTLN_RANK("tg->edgememory_size=%"PRId64", sizeof(tuple_graph)=%"PRId64, tg->edgememory_size, sizeof(tuple_graph))
 
+#ifdef NEW_GRAPH_BUILDER
+    new_convert_graph_to_oned_csr(tg, &g);
+#else
     convert_graph_to_oned_csr(tg, &g);
+#endif
 
 //    tuple_graph* tg2 = xmalloc(sizeof(tuple_graph));
 //    tg2 = tg;
