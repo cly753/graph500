@@ -64,6 +64,11 @@ void show_g() {
 int64_t *in_edge_start;
 int64_t *in_edge_to; // global index
 
+#ifdef FILTER_ZERO_DEGREE
+int64_t non_zero_degree_count_global;
+#endif
+int64_t non_zero_degree_count;
+
 void show_in_edge() {
     int i;
     for (i = 0; i < g.nglobalverts; i++) {
@@ -155,8 +160,6 @@ void filter_duplicate_edge() {
     free(dest_exist);
 }
 
-int64_t non_zero_degree_count;
-
 void count_duplicate_edge() {
     int64_t *dest_exist = xmalloc(global_long_nb);
     int i;
@@ -210,7 +213,13 @@ void make_graph_data_structure(const tuple_graph* const tg) {
     tg_copy->edgememory = xmalloc(tg->edgememory_size * sizeof(packed_edge));
     memcpy(tg_copy->edgememory, tg->edgememory, tg->edgememory_size * sizeof(packed_edge));
 
-    filter_zero_degree(tg_copy);
+    non_zero_degree_count_global = filter_zero_degree(tg_copy);
+    MPI_Bcast(
+        &non_zero_degree_count_global, // void* data,
+        1, // int count,
+        MPI_LONG_LONG, // MPI_Datatype datatype,
+        0, // int root,
+        MPI_COMM_WORLD); // MPI_Comm communicator)
     broadcast_filter_zero_degree_result();
 
 #ifdef NEW_GRAPH_BUILDER

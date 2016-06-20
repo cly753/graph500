@@ -84,7 +84,7 @@ int been_relabelled(int64_t old_index) {
 
 // assume not define GENERATOR_USE_PACKED_EDGE_TYPE
 // see "../../../generator/graph_generator.h"
-void filter_zero_degree(const tuple_graph* const tg) {
+int64_t filter_zero_degree(const tuple_graph* const tg) {
 #ifdef USE_OPENMP
     omp_set_num_threads(24);
 #endif
@@ -161,6 +161,8 @@ void filter_zero_degree(const tuple_graph* const tg) {
         int64_t v1_new = get_new_index(v1);
         write_edge(tg->edgememory + i, v0_new, v1_new);
     }
+
+    return max_index + 1 - accu;
 }
 
 void broadcast_filter_zero_degree_result() {

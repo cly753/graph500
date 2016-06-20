@@ -12,6 +12,10 @@ extern int64_t *frontier_next;
 extern int64_t *in_edge_start;
 extern int64_t *in_edge_to;
 
+#ifdef FILTER_ZERO_DEGREE
+extern int64_t non_zero_degree_count_global;
+#endif
+
 void one_step_top_down() {
 #ifdef USE_OPENMP
     omp_set_num_threads(2);
@@ -25,7 +29,11 @@ void one_step_top_down() {
 #ifdef USE_OPENMP
     #pragma omp parallel for
 #endif
+#ifndef FILTER_ZERO_DEGREE
     for (i = 0; i < g.nglobalverts; i++) {
+#else
+    for (i = 0; i < non_zero_degree_count_global; i++) {
+#endif
         if (!TEST_GLOBAL(i, frontier))
             continue;
         int j;

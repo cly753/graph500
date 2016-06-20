@@ -19,7 +19,7 @@
 extern int64_t max_index;
 extern int64_t non_zero_degree_count;
 
-void filter_zero_degree(const tuple_graph* const tg);
+int64_t filter_zero_degree(const tuple_graph* const tg);
 void broadcast_filter_zero_degree_result();
 int64_t get_new_index(int64_t old_index);
 int64_t get_old_index(int64_t new_index);
