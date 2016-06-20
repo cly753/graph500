@@ -12,9 +12,16 @@ extern int64_t *pred;
 extern int64_t *frontier;
 extern int64_t *frontier_next;
 
+#ifdef USE_OPENMP
+    omp_set_num_threads(2);
+#endif
+
 void one_step_bottom_up() {
     int i;
-//    #pragma omp parallel for
+    
+#ifdef USE_OPENMP
+   #pragma omp parallel for
+#endif
     for (i = 0; i < g.nlocalverts; i++) {
         if (pred[i] == -1) {
             int j;
