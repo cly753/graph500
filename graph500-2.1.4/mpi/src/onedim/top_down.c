@@ -38,7 +38,8 @@ void one_step_top_down() {
                 #pragma omp critical
 #endif
                 {
-                    SET_GLOBAL(to, frontier_next);
+                    add_frontier_next(to);
+                    // SET_GLOBAL(to, frontier_next);
                 }
             }
         }

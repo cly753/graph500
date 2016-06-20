@@ -40,7 +40,8 @@ void one_step_bottom_up() {
                 int64_t parent_global = g.column[j];
                 if (TEST_GLOBAL(parent_global, frontier)) {
                     pred[i] = parent_global;
-                    SET_GLOBAL(VERTEX_TO_GLOBAL(rank, i), frontier_next);
+                    add_frontier_next(VERTEX_TO_GLOBAL(rank, i));
+                    // SET_GLOBAL(VERTEX_TO_GLOBAL(rank, i), frontier_next);
                     break;
                 }
             }

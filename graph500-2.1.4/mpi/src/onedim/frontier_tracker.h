@@ -12,4 +12,6 @@ void sync_frontier();
 
 int frontier_have_more();
 
+void add_frontier_next(int64_t to);
+
 #endif //MPI_FRONTIER_TRACKER_H
