@@ -18,14 +18,14 @@ void one_step_top_down() {
 #endif
     
     int i;
-    for (i = 0; i < g.nglobalverts; i++) {
-        if (!TEST_GLOBAL(i, frontier))
-            continue;
-        int j;
 
 #ifdef USE_OPENMP
     #pragma omp parallel for
 #endif
+    for (i = 0; i < g.nglobalverts; i++) {
+        if (!TEST_GLOBAL(i, frontier))
+            continue;
+        int j;
         for (j = (int)in_edge_start[i]; j < in_edge_start[i + 1]; j++) {
             int64_t to = in_edge_to[j];
             if (pred[VERTEX_LOCAL(to)] == -1) {
