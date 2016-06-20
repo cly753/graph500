@@ -2,6 +2,8 @@
 #define MPI_CONSTANTS_H
 
 #define FILER_EDGE
+// #define FILTER_ZERO_DEGREE
+// #define PUT_RECOVER_ZERO_DEGREE_IN_VALIDATION
 
 // #define SHOWDEBUG
 #define SHOWTIMER

@@ -6,6 +6,10 @@
 #include "bfs.h"
 #include "print.h"
 
+#ifdef FILTER_ZERO_DEGREE
+extern int64_t non_zero_degree_count;
+#endif
+
 extern oned_csr_graph g;
 extern int64_t *pred;
 
@@ -22,7 +26,11 @@ void one_step_bottom_up() {
 #ifdef USE_OPENMP
    #pragma omp parallel for
 #endif
+#ifndef FILTER_ZERO_DEGREE
     for (i = 0; i < g.nlocalverts; i++) {
+#else
+    for (i = 0; i < non_zero_degree_count; i++) {
+#endif
         if (pred[i] == -1) {
             int j;
             for (j = (int) g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {

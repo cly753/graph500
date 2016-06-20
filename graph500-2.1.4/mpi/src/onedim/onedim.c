@@ -15,9 +15,19 @@
 #include "bfs.h"
 #include "bottom_up.h"
 #include "build_graph.h"
+#include "vertex_relabel.h"
+#include "sort_graph.h"
+
+#include "../../../generator/graph_generator.h"
 
 oned_csr_graph g;
-//oned_csc_graph g_csc;
+void show_g() {
+    REACH_HERE_RANK
+    PRINTLN("rank %02d: nlocalverts: %"PRId64", max_nlocalverts: %"PRId64
+        ", nlocaledges: %"PRId64", lg_nglobalverts: %d, nglobalverts: %"PRId64"",
+        rank,
+        g.nlocalverts, g.max_nlocalverts, g.nlocaledges, g.lg_nglobalverts, g.nglobalverts)
+}
 
 // typedef struct oned_csr_graph {
 //     size_t nlocalverts;
@@ -50,6 +60,11 @@ oned_csr_graph g;
 
 int64_t *in_edge_start;
 int64_t *in_edge_to; // global index
+
+#ifdef FILTER_ZERO_DEGREE
+int64_t non_zero_degree_count_global;
+#endif
+int64_t non_zero_degree_count;
 
 void show_in_edge() {
     int i;
@@ -120,30 +135,18 @@ void show_csr() {
     }
 }
 
-//void show_csc() {
-//    int i;
-//    for (i = 0; i < g.nlocalverts; i++) {
-//        int j;
-//        PRINT_RANK("csc: %d - ", VERTEX_TO_GLOBAL(rank, i))
-//        for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
-//            PRINT(" [%d]%d", j, g.column[j])
-//        }
-//        PRINTLN("")
-//    }
-//}
-
 void filter_duplicate_edge() {
-    int64_t *exist = xmalloc(global_long_nb);
+    int64_t *dest_exist = xmalloc(global_long_nb);
     int new_j = 0;
     int new_start = -1;
     int i;
     for (i = 0; i < g.nlocalverts; i++) {
-        memset(exist, 0, global_long_nb);
+        memset(dest_exist, 0, global_long_nb);
         new_start = new_j;
         int j;
         for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
-            if (!TEST_GLOBAL(g.column[j], exist)) {
-                SET_GLOBAL(g.column[j], exist);
+            if (!TEST_GLOBAL(g.column[j], dest_exist)) {
+                SET_GLOBAL(g.column[j], dest_exist);
                 g.column[new_j] = g.column[j];
                 new_j++;
             }
@@ -151,81 +154,119 @@ void filter_duplicate_edge() {
         g.rowstarts[i] = new_start;
     }
     g.rowstarts[i] = new_j;
-    free(exist);
+    free(dest_exist);
 }
 
 void count_duplicate_edge() {
-    int64_t *exist = xmalloc(global_long_nb);
+    int64_t *dest_exist = xmalloc(global_long_nb);
     int i;
     int total_duplicated_edge = 0;
-    int total_edge = g.rowstarts[g.nlocalverts - 1] - g.rowstarts[0];
+    int total_edge = g.rowstarts[g.nlocalverts] - g.rowstarts[0];
     int zero_edge_vertex = 0;
     for (i = 0; i < g.nlocalverts; i++) {
-        memset(exist, 0, global_long_nb);
+        memset(dest_exist, 0, global_long_nb);
         int duplicated_edge = 0;
         int j;
         for (j = g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
-            if (TEST_GLOBAL(g.column[j], exist))
+            if (TEST_GLOBAL(g.column[j], dest_exist))
                 duplicated_edge++;
             else
-                SET_GLOBAL(g.column[j], exist);
+                SET_GLOBAL(g.column[j], dest_exist);
         }
         total_duplicated_edge += duplicated_edge;
-//        int64_t global_i = VERTEX_TO_GLOBAL(rank, i);
+        // int64_t global_i = VERTEX_TO_GLOBAL(rank, i);
         int edge = g.rowstarts[i + 1] - g.rowstarts[i];
         if (edge == 0)
             zero_edge_vertex++;
-//        PRINTLN_RANK("vertex %d have %d duplicated edges (total %d edges) (%3f).",
-//                (int)global_i, duplicated_edge, edge, duplicated_edge / (float)edge)
+        // PRINTLN_RANK("vertex %d have %d duplicated edges (total %d edges) (%3f).",
+        //        (int)global_i, duplicated_edge, edge, duplicated_edge / (float)edge)
     }
+    PRINTLN_RANK("g.nlocaledges: %"PRId64"", g.nlocaledges)
     PRINTLN_RANK("summary: %d vertex have %d duplicated edges (total %d edges) (%3f), %d zero edge vertex (%3f).",
                  (int)g.nlocalverts, total_duplicated_edge, total_edge,
                  total_duplicated_edge / (float)total_edge, zero_edge_vertex,
                  zero_edge_vertex / (float)g.nlocalverts)
-    free(exist);
+    free(dest_exist);
+
+    non_zero_degree_count = g.nlocalverts - zero_edge_vertex;
 }
 
 void make_graph_data_structure(const tuple_graph* const tg) {
-    PRINTLN_RANK("tg->edgememory_size=%"PRId64", sizeof(tuple_graph)=%"PRId64, tg->edgememory_size, sizeof(tuple_graph))
+    PRINTLN_RANK("tg->edgememory_size=%"PRId64"", tg->edgememory_size)
 
+#ifndef FILTER_ZERO_DEGREE
 #ifdef NEW_GRAPH_BUILDER
     new_convert_graph_to_oned_csr(tg, &g);
 #else
     convert_graph_to_oned_csr(tg, &g);
 #endif
+#ifdef SHOWDEBUG
+    show_csr();
+#endif
+    
+#else // FILTER_ZERO_DEGREE
+    tuple_graph *tg_copy = xmalloc(sizeof(tuple_graph));
+    *tg_copy = *tg;
+    tg_copy->edgememory = xmalloc(tg->edgememory_size * sizeof(packed_edge));
+    memcpy(tg_copy->edgememory, tg->edgememory, tg->edgememory_size * sizeof(packed_edge));
 
-//    tuple_graph* tg2 = xmalloc(sizeof(tuple_graph));
-//    tg2 = tg;
-//    tg2->edgememory = xmalloc(tg->edgememory_size);
-//    memcpy(tg2->edgememory, tg->edgememory, tg->edgememory_size);
-//    convert_graph_to_oned_csc(tg2, &g_csc);
-//    PRINTLN_RANK("converted, showing csc ...")
-//    show_csc();
+    non_zero_degree_count_global = filter_zero_degree(tg_copy);
+    MPI_Bcast(
+        &non_zero_degree_count_global, // void* data,
+        1, // int count,
+        MPI_LONG_LONG, // MPI_Datatype datatype,
+        0, // int root,
+        MPI_COMM_WORLD); // MPI_Comm communicator)
+    broadcast_filter_zero_degree_result();
+
+#ifdef NEW_GRAPH_BUILDER
+    new_convert_graph_to_oned_csr(tg_copy, &g);
+#else
+    convert_graph_to_oned_csr(tg_copy, &g);
+#endif
+
+    free(tg_copy->edgememory);
+    free(tg_copy);
+#endif // FILTER_ZERO_DEGREE
 
     local_long_n = (g.nlocalverts + LONG_BITS - 1) / LONG_BITS;
     local_long_nb = local_long_n * sizeof(unsigned long);
     global_long_n = (g.nglobalverts + LONG_BITS - 1) / LONG_BITS;
     global_long_nb = global_long_n * sizeof(unsigned long);
 
-#ifdef FILER_EDGE
-// #ifdef SHOWDEBUG
-//     show_csr();
-// #endif
+#ifdef FILTER_EDGE
+#ifdef SHOWDEBUG
+    show_csr();
     count_duplicate_edge();
+#endif
     filter_duplicate_edge();
-// #ifdef SHOWDEBUG
-//     show_csr();
-// #endif
+
+#ifdef SHOWDEBUG
+    show_csr();
+#endif
+#endif
+
+#if defined(SHOWDEBUG) || defined(FILTER_ZERO_DEGREE)
     count_duplicate_edge();
 #endif
 
-   csr_to_in_edge();
-// #ifdef SHOWDEBUG
-//    show_in_edge();
-// #endif
+    csr_to_in_edge();
+#ifdef SHOWDEBUG
+   show_in_edge();
+#endif
+
+#ifdef FILTER_ZERO_DEGREE
+    calculate_remapped_count();
+#endif
+
+    sort_csr_by_degree(&g);
+    sort_in_edge_by_degree(in_edge_start, in_edge_to);
+
+#ifdef SHOWDEBUG
+    show_g();
+#endif
 
     init_bottom_up_gpu();
-
 }
 
 void free_graph_data_structure(void) {
@@ -282,13 +323,74 @@ void run_bfs(int64_t root, int64_t* pred) {
     *
     * The validator will check this for correctness. */
 
-#ifdef SHOWDEBUG
-    PRINTLN("rank %02d: nlocalverts: %"PRId64", max_nlocalverts: %"PRId64
-        ", nlocaledges: %"PRId64", lg_nglobalverts: %d, nglobalverts: %"PRId64"",
-        rank,
-        g.nlocalverts, g.max_nlocalverts, g.nlocaledges, g.lg_nglobalverts, g.nglobalverts)
-#endif
+#ifndef FILTER_ZERO_DEGREE
+
     bfs(&g, root, pred);
+
+#else // FILTER_ZERO_DEGREE
+    if (!been_relabelled(root)) {
+        memset(pred, -1, g.nlocalverts * sizeof(int64_t));
+        if (rank == VERTEX_OWNER(root))
+            pred[VERTEX_LOCAL(root)] = root;
+    }
+    else {
+        int64_t new_root = get_new_index(root);
+#ifdef SHOWDEBUG
+        PRINTLN_RANK("get_new_index(%"PRId64") = %"PRId64"", root, new_root)
+#endif
+        bfs(&g, new_root, pred);
+
+#ifdef SHOWDEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (rank == 0) {
+            PRINTLN_RANK("BEFORE RECOVERING")
+            show_pred();
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+        else {
+            MPI_Barrier(MPI_COMM_WORLD);
+            PRINTLN_RANK("BEFORE RECOVERING")
+            show_pred();
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+#ifdef SHOWTIMER
+        double t_start = 0;
+        double t_stop = 0;
+        double t_total = 0;
+        if (rank == 0)
+            t_start = MPI_Wtime();
+#endif
+
+#ifndef PUT_RECOVER_ZERO_DEGREE_IN_VALIDATION
+        recover_index(pred);
+
+#ifdef SHOWTIMER
+        if (rank == 0) {
+            t_stop = MPI_Wtime();
+            t_total = t_stop - t_start;
+            PRINTLN("[TIMER] time for recover_index: %.6lfs", t_total);
+        }
+#endif
+#endif
+    }    
+
+#ifdef SHOWDEBUG
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0) {
+        PRINTLN_RANK("AFTER RECOVERING")
+        show_pred();
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Barrier(MPI_COMM_WORLD);
+        PRINTLN_RANK("AFTER RECOVERING")
+        show_pred();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+#endif // FILTER_ZERO_DEGREE
 }
 
 void get_vertex_distribution_for_pred(size_t count, const int64_t* vertex_p, int* owner_p, size_t* local_p) {
