@@ -14,5 +14,6 @@
 
 #define DOPRINT
 
+#define SINGLE_PROC_VALIDATION
 
 #endif //MPI_CONSTANTS_H
