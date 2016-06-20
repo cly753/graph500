@@ -11,7 +11,7 @@ CFLAGS = ${CFLAGS_} -Isrc -Isrc/util -Isrc/onedim -I. -I..
 all: graph500_mpi_onedim
 
 HEADERS_ = common.h oned_csr.h oned_csc.h redistribute.h mpi_workarounds.h onesided.h
-HEADERS = ${HEADERS_} src/constants.h src/util/print.h src/onedim/bfs.h src/onedim/top_down.h src/onedim/bottom_up.h src/onedim/frontier_tracker.h src/onedim/parent_tracker.h
+HEADERS = ${HEADERS_} src/constants.h src/util/print.h src/onedim/bfs.h src/onedim/top_down.h src/onedim/bottom_up.h src/onedim/frontier_tracker.h src/onedim/parent_tracker.h src/validate/new_validate.h 
 # HEADERS = ${HEADERS_}
 
 GENERATOR_SOURCES = ../generator/graph_generator.c ../generator/make_graph.c ../generator/splittable_mrg.c ../generator/utils.c
@@ -20,7 +20,7 @@ SOURCES_ = main.c oned_csr.c oned_csc.c utils.c validate.c onesided.c onesided_e
 SOURCES = ${SOURCES_} src/util/print.c
 # OBJECTS_ = $(patsubst %.c, %.o, $(SOURCES))
 
-SOURCES_ONEDIM = src/onedim/onedim.c src/onedim/bfs.c src/onedim/top_down.c src/onedim/bottom_up.c src/onedim/frontier_tracker.c src/onedim/parent_tracker.c
+SOURCES_ONEDIM = src/onedim/onedim.c src/onedim/bfs.c src/onedim/top_down.c src/onedim/bottom_up.c src/onedim/frontier_tracker.c src/onedim/parent_tracker.c src/validate/new_validate.c
 # OBJECTS = ${OBJECTS_} $(patsubst %.c, %.o, $(SOURCES_ONEDIM))
 # SOURCES = ${SOURCES_}
 
