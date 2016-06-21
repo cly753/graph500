@@ -12,8 +12,6 @@
 extern oned_csr_graph g;
 int64_t *pred;
 
-extern int64_t *parent_cur;
-
 int root_owner;
 
 void show_local(int64_t *a) {
@@ -52,25 +50,35 @@ void show_pred() {
 
 extern int64_t *in_edge_start;
 extern int64_t *in_edge_to;
-int now_top_down;
 int nth_call;
-const int cutoff_to_bottom_up = 2; // first topdown->bottomup switch
-const int cutoff_to_top_down = 4; // first bottomup->topdown switch
-const float alpha = 0.2;
-const float beta = 10;
+
+// n == 20
+// int top_down_better() {
+//     switch (nth_call++) {
+//     case 0 ... 1: // inclusive
+//         return 1;
+//     case 2 ... 6:
+//         return 0;
+//     default: // > 4
+//         return 1;
+//     }
+// }
+
+// n == 18
 int top_down_better() {
-    // so good!
-    if (nth_call > cutoff_to_top_down)
-        return 0;
-    if (nth_call++ < cutoff_to_bottom_up)
+    switch (nth_call++) {
+    case 0 ... 1: // inclusive
         return 1;
-    return 0;
+    case 2 ... 4:
+        return 0;
+    default: // > 4
+        return 1;
+    }
 }
 
 void init() {
     memset(pred, -1, g.nlocalverts * sizeof(int64_t));
 
-    now_top_down = 1;
     nth_call = 0;
 }
 
@@ -93,6 +101,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         PRINTLN_RANK("root: %d", (int)root)
 #endif
         pred[VERTEX_LOCAL(root)] = root;
+        SET_LOCAL_WITH_LOCAL(VERTEX_LOCAL(root), pred_visited);
     }
 
     SET_GLOBAL(root, frontier);
