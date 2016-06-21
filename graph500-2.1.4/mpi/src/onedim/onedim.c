@@ -174,7 +174,11 @@ void count_duplicate_edge() {
 void make_graph_data_structure(const tuple_graph* const tg) {
     // PRINTLN_RANK("tg->edgememory_size=%"PRId64", sizeof(tuple_graph)=%"PRId64, tg->edgememory_size, sizeof(tuple_graph))
 
+#ifdef NEW_GRAPH_BUILDER
+    new_convert_graph_to_oned_csr(tg, &g);
+#else
     convert_graph_to_oned_csr(tg, &g);
+#endif
 
     local_long_n = (g.nlocalverts + LONG_BITS - 1) / LONG_BITS;
     local_long_nb = local_long_n * sizeof(unsigned long);

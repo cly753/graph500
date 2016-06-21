@@ -17,5 +17,9 @@
 #define PURE_GPU
 #define CUDA_OMPI
 
+#define NEW_GRAPH_BUILDER
+
+#define SINGLE_PROC_VALIDATION
+
 
 #endif //MPI_CONSTANTS_H
