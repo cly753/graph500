@@ -95,7 +95,7 @@ int64_t filter_zero_degree(const tuple_graph* const tg) {
 #endif
 
     if (rank != 0)
-        return ;
+        return -1;
 
     int i;
     for (i = 0; i < tg->edgememory_size; i++) {
