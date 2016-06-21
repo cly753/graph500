@@ -1,7 +1,6 @@
 
 #include "vertex_relabel.h"
 
-
 int64_t max_index = -1;
 
 int64_t exist_long_n;
@@ -315,9 +314,6 @@ void recover_index(int64_t *pred) {
     	i++;
     }
 
-#ifdef USE_OPENMP
-    #pragma omp parallel for
-#endif
     for (i = non_zero_degree_count - 1; i >= 0; i--) {
     	if (!is_old_owner[i])
     		continue ;
