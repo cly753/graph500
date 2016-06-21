@@ -44,7 +44,7 @@ void sync_frontier() {
 
 int frontier_have_more() {
 #ifdef USE_OPENMP
-    omp_set_num_threads(2);
+    omp_set_num_threads(12);
 #endif
 
     int yes = 0;
