@@ -16,6 +16,9 @@
 #define SET_LOCAL(v, a) do {(a)[VERTEX_LOCAL((v)) >> LONG_BITS_LG] |= (1UL << (VERTEX_LOCAL((v)) & LONG_BITS_BIN));} while (0)
 #define TEST_LOCAL(v, a) (((a)[VERTEX_LOCAL((v)) >> LONG_BITS_LG] & (1UL << (VERTEX_LOCAL((v)) & LONG_BITS_BIN))) != 0)
 
+#define SET_LOCAL_WITH_LOCAL(v, a) do {(a)[(v) >> LONG_BITS_LG] |= (1UL << ((v) & LONG_BITS_BIN));} while (0)
+#define TEST_LOCAL_WITH_LOCAL(v, a) (((a)[(v) >> LONG_BITS_LG] & (1UL << ((v) & LONG_BITS_BIN))) != 0)
+
 #define SET_GLOBAL(v, a) do {(a)[(v) >> LONG_BITS_LG] |= (1UL << ((v) & LONG_BITS_BIN));} while (0)
 #define TEST_GLOBAL(v, a) (((a)[(v) >> LONG_BITS_LG] & (1UL << ((v) & LONG_BITS_BIN))) != 0)
 
@@ -55,7 +58,7 @@
         } \
     } while (0)
 
-
+// int64_t *pred_visited;
 
 int local_long_n;
 size_t local_long_nb;

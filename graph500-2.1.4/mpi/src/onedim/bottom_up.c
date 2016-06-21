@@ -23,23 +23,28 @@ void one_step_bottom_up() {
     int i;
 
 #ifdef USE_OPENMP
-    omp_set_num_threads(2);
+    omp_set_num_threads(12);
 #endif
 
 #ifdef USE_OPENMP
    #pragma omp parallel for
 #endif
 #ifndef FILTER_ZERO_DEGREE
-    for (i = 0; i < g.nlocalverts; i++) {
+    for (i = 0; i < g.nlocalverts; i++)
 #else
-    for (i = 0; i < non_zero_degree_count; i++) {
+    for (i = 0; i < non_zero_degree_count; i++)
 #endif
-        if (pred[i] == -1) {
+    {
+
+        // if (!TEST_LOCAL_WITH_LOCAL(i, pred_visited))
+        if (pred[i] == -1)
+        {
             int j;
             for (j = (int) g.rowstarts[i]; j < g.rowstarts[i + 1]; j++) {
                 int64_t parent_global = g.column[j];
                 if (TEST_GLOBAL(parent_global, frontier)) {
                     pred[i] = parent_global;
+                    // SET_LOCAL_WITH_LOCAL(i, pred_visited);
                     SET_GLOBAL(VERTEX_TO_GLOBAL(rank, i), frontier_next);
                     break;
                 }

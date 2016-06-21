@@ -80,6 +80,10 @@ void init() {
     memset(pred, -1, g.nlocalverts * sizeof(int64_t));
 
     nth_call = 0;
+
+    // if (pred_visited == NULL)
+    //     pred_visited = xmalloc(local_long_nb);
+    // memset(pred_visited, 0, local_long_nb);
 }
 
 void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
@@ -101,7 +105,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         PRINTLN_RANK("root: %d", (int)root)
 #endif
         pred[VERTEX_LOCAL(root)] = root;
-        SET_LOCAL_WITH_LOCAL(VERTEX_LOCAL(root), pred_visited);
+        // SET_LOCAL_WITH_LOCAL(VERTEX_LOCAL(root), pred_visited);
     }
 
     SET_GLOBAL(root, frontier);
