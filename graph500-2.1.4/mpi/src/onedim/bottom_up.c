@@ -16,7 +16,18 @@ extern int64_t *pred;
 extern int64_t *frontier;
 extern int64_t *frontier_next;
 
+extern int use_index;
+extern int size_receive_total;
+extern int64_t *receive_index;
+
 void one_step_bottom_up() {
+    if (use_index) {
+        int k;
+        for (k = 0; k < size_receive_total; k++) {
+            SET_GLOBAL(receive_index[k], frontier);
+        }
+    }
+
 #ifdef SHOWDEBUG
     PRINTLN("--- bottom up ---")
 #endif

@@ -93,6 +93,7 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         PRINTLN_RANK("root: %d", (int)root)
 #endif
         pred[VERTEX_LOCAL(root)] = root;
+        add_frontier_next(root);
     }
 
     SET_GLOBAL(root, frontier);
@@ -135,5 +136,10 @@ void bfs(oned_csr_graph *gg, int64_t root, int64_t *predpred) {
         if (!frontier_have_more())
             break;
     }
+
+#ifdef SHOWDEBUG
+    PRINTLN_RANK("--- done ---")
+    show_pred();
+#endif
 }
 

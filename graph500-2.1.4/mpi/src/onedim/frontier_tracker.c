@@ -8,13 +8,15 @@
 #include "print.h"
 
 int sync_times;
-int64_t cur_idx;
-int size_frontier_idx = 1000;
+int cur_idx;
+int size_frontier_idx = 100000;
 int64_t *frontier_idx;
 
-int size_receive;
-int64_t *frontier_idx_receive;
-int thres = 1;
+int64_t *receive_index;
+int size_receive_total;
+int thres = 2;
+
+int use_index;
 
 void init_frontier() {
     if (frontier == NULL)
@@ -29,55 +31,64 @@ void init_frontier() {
     memset(frontier_idx, -1, size_frontier_idx * sizeof(int64_t));
 
     sync_times = 0;
-    size_receive = size_frontier_idx * size;
-    if (frontier_idx_receive == NULL)
-        frontier_idx_receive = xmalloc(size_receive * sizeof(int64_t));
-
-    // PRINTLN_RANK("size_receive = %d", size_receive)
 }
 
 void sync_frontier() {
     if (sync_times < thres) {
-        // REACH_HERE_RANK
+        use_index = 1;
 
         if (cur_idx > size_frontier_idx) {
             PRINTLN_RANK("!!! cur_idx = %d, size_frontier_idx = %d !!!", cur_idx, size_frontier_idx)
         }
-        // int i;
-        // PRINT_RANK("frontier_idx:")
-        // for (i = 0; i < size_frontier_idx; i++) {
-        //     PRINT(" %d", frontier_idx[i])
-        // }
-        // PRINTLN("")
 
+        int *size_receive = xmalloc(size * sizeof(int));
         MPI_Allgather(
-            frontier_idx, // void* send_data,
-            size_frontier_idx, // int send_count,
-            MPI_LONG_LONG, // MPI_Datatype send_datatype,
-            frontier_idx_receive, // void* recv_data,
-            size_frontier_idx, // int recv_count,
-            MPI_LONG_LONG, // MPI_Datatype recv_datatype,
+            &cur_idx, // void* send_data,
+            1, // int send_count,
+            MPI_INT, // MPI_Datatype send_datatype,
+            size_receive, // void* recv_data,
+            1, // int recv_count,
+            MPI_INT, // MPI_Datatype recv_datatype,
             MPI_COMM_WORLD); // MPI_Comm communicator)
+
+        size_receive_total = 0;
+        int j;
+        for (j = 0; j < size; j++) {
+            size_receive_total += size_receive[j];
+        }
+        if (receive_index != NULL)
+            free(receive_index);
+        receive_index = xmalloc(size_receive_total * sizeof(int64_t));
+
+        int *receive_displs = xmalloc(size * sizeof(int));
+        receive_displs[0] = 0;
+        for (j = 1; j < size; j++) {
+            receive_displs[j] = receive_displs[j - 1] + size_receive[j - 1];
+        }
         
-        // PRINT_RANK("frontier_idx_receive:")
-        // for (i = 0; i < size_receive; i++) {
-        //     PRINT(" %d", frontier_idx_receive[i])
+        MPI_Allgatherv(
+            frontier_idx, // const void *sendbuf, 
+            cur_idx, // int sendcount,
+            MPI_LONG_LONG, // MPI_Datatype sendtype, 
+            receive_index, // void *recvbuf, 
+            size_receive, // const int recvcounts[],
+            receive_displs, // const int displs[], 
+            MPI_LONG_LONG, // MPI_Datatype recvtype, 
+            MPI_COMM_WORLD); // MPI_Comm comm)
+
+        // int i;
+        // PRINT_RANK("receive_index (%d):", size_receive_total)
+        // for (i = 0; i < size_receive_total; i++) {
+        //     PRINT(" %d", receive_index[i])
         // }
         // PRINTLN("")
 
         sync_times++;
         cur_idx = 0;
-        memset(frontier_idx, -1, size_frontier_idx * sizeof(int64_t));
-        int i;
-        for (i = 0; i < size_receive; i++) {
-            if (frontier_idx_receive[i] != -1) {
-                SET_GLOBAL(frontier_idx_receive[i], frontier);
-            }
-        }
-        // REACH_HERE_RANK
     }
     else {
-        // REACH_HERE_RANK
+        use_index = 0;
+
 #ifdef SHOWDEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         PRINTLN("rank %02d: frontier_next:", rank)
@@ -86,12 +97,12 @@ void sync_frontier() {
 #endif
         // allreduce to broadcast frontier
         MPI_Allreduce(
-                frontier_next, // void* send_data
-                frontier, // void* recv_data
-                global_long_n, // int count
-                MPI_LONG, // MPI_Datatype datatype
-                MPI_BOR, // MPI_Op op
-                MPI_COMM_WORLD // MPI_Comm communicator
+            frontier_next, // void* send_data
+            frontier, // void* recv_data
+            global_long_n, // int count
+            MPI_LONG, // MPI_Datatype datatype
+            MPI_BOR, // MPI_Op op
+            MPI_COMM_WORLD // MPI_Comm communicator
         );
         memset(frontier_next, 0, global_long_nb);
 #ifdef SHOWDEBUG
@@ -100,12 +111,14 @@ void sync_frontier() {
         show_global(frontier);
         MPI_Barrier(MPI_COMM_WORLD);
 #endif  
-
-        // REACH_HERE_RANK
     }
 }
 
 int frontier_have_more() {
+    if (use_index) {
+        return size_receive_total != 0;
+    }
+
 #ifdef USE_OPENMP
     omp_set_num_threads(2);
 #endif
