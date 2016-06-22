@@ -450,6 +450,7 @@ int main(int argc, char **argv) {
         int validation_passed_one = new_validate_bfs_result(&tg, max_used_vertex + 1, nlocalverts, root, pred,
                                                         &edge_visit_count);
 #endif
+        
         if (rank == 0) fprintf(stderr, "edge count: %"PRId64"\n", edge_visit_count);
         double validate_stop = MPI_Wtime();
         validate_times[bfs_root_idx] = validate_stop - validate_start;
