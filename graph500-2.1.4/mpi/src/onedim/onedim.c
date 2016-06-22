@@ -179,7 +179,6 @@ void make_graph_data_structure(const tuple_graph* const tg) {
 #else
     convert_graph_to_oned_csr(tg, &g);
 #endif
-
     local_long_n = (g.nlocalverts + LONG_BITS - 1) / LONG_BITS;
     local_long_nb = local_long_n * sizeof(unsigned long);
     global_long_n = (g.nglobalverts + LONG_BITS - 1) / LONG_BITS;
